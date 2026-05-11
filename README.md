@@ -87,6 +87,10 @@ docs/         Implementation notes and API documentation
 
 Components only compose DSL trees. They do not own OpenGL primitives directly. Business state stays in the page or application layer: pass the current value into the builder, then write the next value back from callbacks.
 
+## License
+
+EUI-NEO's original source code is licensed under the Apache License 2.0. Third-party code under `3rd/`, build-time dependencies fetched by CMake, and bundled fonts or icon fonts under `assets/` follow their respective upstream licenses and copyright notices.
+
 ## Star History
 
 <a href="https://www.star-history.com/#sudoevolve/EUI-NEO&Date">

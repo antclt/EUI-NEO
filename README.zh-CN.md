@@ -87,6 +87,10 @@ docs/         项目实现文档
 
 组件只组合 DSL 树，不直接持有 OpenGL primitive。业务状态仍然放在页面或业务层，通过 builder 参数传入当前值，再从回调写回 next value。
 
+## 许可
+
+EUI-NEO 的原创源码采用 Apache License 2.0。`3rd/` 下的第三方代码、CMake 构建时拉取的第三方依赖，以及 `assets/` 下随项目分发的字体和图标字体，遵循各自上游许可证和版权声明。
+
 ## Star History
 
 <a href="https://www.star-history.com/#sudoevolve/EUI-NEO&Date">
