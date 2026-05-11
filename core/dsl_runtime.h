@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 
 #include "core/dsl.h"
+#include "core/platform.h"
 #include "core/event.h"
 #include "core/image.h"
 
@@ -114,6 +115,7 @@ public:
             updateTextInput(keyboardEvent);
         }
         releaseUnseenTimers();
+        updateImeCursorRect(window, dpiScale);
         applyCursor(window);
 
         promoteBackdropBlurDirtyRegions();
@@ -909,6 +911,31 @@ private:
                 needsRender_ = true;
             }
         }
+    }
+
+    void updateImeCursorRect(GLFWwindow* window, float dpiScale) {
+        if (window == nullptr || focusedId_.empty()) {
+            return;
+        }
+
+        const Element* element = ui_.find(focusedId_);
+        if (element == nullptr || !element->hasImeRect) {
+            return;
+        }
+
+        const Rect logicalRect{
+            element->frame.x + element->imeRect.x,
+            element->frame.y + element->imeRect.y,
+            element->imeRect.width,
+            element->imeRect.height
+        };
+        const Rect pixelRect = toPixelRect(logicalRect, dpiScale);
+        core::platform::setImeCursorRect(
+            window,
+            pixelRect.x,
+            pixelRect.y,
+            pixelRect.width,
+            pixelRect.height);
     }
 
     void updateInteraction(const Element& element, const PointerEvent& event, float dpiScale, const std::string& hoverTargetId) {

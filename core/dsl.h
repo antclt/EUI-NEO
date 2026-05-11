@@ -112,6 +112,8 @@ struct Element {
     bool interactive = false;
     bool focusable = false;
     bool disabled = false;
+    bool hasImeRect = false;
+    Rect imeRect;
     CursorShape cursor = CursorShape::Arrow;
     Color hoverColor = {1.0f, 1.0f, 1.0f, 1.0f};
     Color pressedColor = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -300,6 +302,17 @@ public:
     Derived& focusable(bool value = true) {
         element_->focusable = value;
         element_->interactive = value || element_->interactive;
+        return self();
+    }
+
+    Derived& imeRect(float xValue, float yValue, float widthValue, float heightValue) {
+        element_->hasImeRect = true;
+        element_->imeRect = {
+            xValue,
+            yValue,
+            std::max(0.0f, widthValue),
+            std::max(0.0f, heightValue)
+        };
         return self();
     }
 

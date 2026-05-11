@@ -4,6 +4,7 @@ project(ModernOpenGLApp VERSION 1.0)
 if(APPLE)
     enable_language(OBJC)
     set_source_files_properties(core/tray_bridge.c PROPERTIES LANGUAGE OBJC)
+    set_source_files_properties(core/ime_bridge.c PROPERTIES LANGUAGE OBJC)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -62,6 +63,7 @@ endif()
 
 set(CORE_SOURCES
     core/image.cpp
+    core/ime_bridge.c
     core/network.cpp
     core/platform.cpp
     core/tray_bridge.c
@@ -96,7 +98,7 @@ function(configure_opengl_app target_name)
 
     if(WIN32)
         target_compile_definitions(${target_name} PRIVATE EUI_TRAY_WINAPI=1)
-        target_link_libraries(${target_name} PRIVATE winmm urlmon shell32 user32)
+        target_link_libraries(${target_name} PRIVATE winmm urlmon shell32 user32 imm32)
 
         add_custom_command(TARGET ${target_name} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different

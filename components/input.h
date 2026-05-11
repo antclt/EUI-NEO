@@ -123,6 +123,7 @@ public:
                     .shadow(focused ? style_.shadow : core::Shadow{})
                     .transition(transition_)
                     .focusable()
+                    .imeRect(cursorX, textY, 1.5f, textLineHeight)
                     .onPress([&state, width, inset, fontSize](const core::PointerEvent& event, const core::Rect& bounds) {
                         state.lastBounds = bounds;
                         state.cursor = cursorFromPointer(state, event.x, bounds, width, inset, fontSize);

@@ -2,6 +2,8 @@
 
 #include <string>
 
+struct GLFWwindow;
+
 namespace core::platform {
 
 struct TrayOptions {
@@ -16,5 +18,6 @@ void pollTray(bool blocking = false);
 bool consumeTrayShowRequested();
 bool consumeTrayExitRequested();
 void shutdownTray();
+void setImeCursorRect(GLFWwindow* window, float x, float y, float width, float height);
 
 } // namespace core::platform

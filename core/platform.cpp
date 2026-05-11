@@ -1,5 +1,6 @@
 #include "core/platform.h"
 
+#include "core/ime_bridge.h"
 #include "core/tray_bridge.h"
 
 #include <cstdlib>
@@ -149,6 +150,10 @@ void shutdownTray() {
         eui_tray_shutdown();
     }
     state = {};
+}
+
+void setImeCursorRect(GLFWwindow* window, float x, float y, float width, float height) {
+    eui_ime_set_cursor_rect(window, x, y, width, height);
 }
 
 } // namespace core::platform
