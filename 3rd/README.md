@@ -2,6 +2,8 @@
 
 EUI-NEO prefers these local source snapshots by default, so a normal CMake configure does not download build-time dependencies while the `3rd/` sources are present.
 
+`dependencies.cmake` is the project-owned dependency wiring file. It keeps third-party discovery, fetch fallback, and bundled warning isolation out of the root `CMakeLists.txt`.
+
 Bundled build dependencies:
 
 - `glfw`: GLFW 3.4
