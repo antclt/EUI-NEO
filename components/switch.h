@@ -2,6 +2,7 @@
 
 #include "components/theme.h"
 #include "core/dsl.h"
+#include "core/render/text.h"
 
 #include <algorithm>
 #include <functional>

@@ -4,8 +4,8 @@
 #include "core/animation.h"
 #include "core/platform/event.h"
 #include "core/render/image_types.h"
-#include "core/render/primitive.h"
-#include "core/render/text.h"
+#include "core/render/render_types.h"
+#include "core/render/text_types.h"
 
 #include <algorithm>
 #include <cstddef>
