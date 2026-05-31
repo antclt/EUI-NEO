@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/render/primitive.h"
+#include "core/render/render_types.h"
 
 #include <algorithm>
 

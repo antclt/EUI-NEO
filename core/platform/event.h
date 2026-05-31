@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/render/primitive.h"
+#include "core/render/render_types.h"
 #include "core/platform/window_backend.h"
 
 #if !defined(EUI_WINDOW_BACKEND_SDL2)

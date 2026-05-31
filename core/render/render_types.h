@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 
 namespace core {
@@ -101,6 +102,17 @@ inline Vec3 transformPointWithW(const TransformMatrix& matrix, float x, float y)
         (matrix.m00 * x + matrix.m01 * y + matrix.tx) * invW,
         (matrix.m10 * x + matrix.m11 * y + matrix.ty) * invW,
         w
+    };
+}
+
+inline Color mixColor(const Color& from, const Color& to, float amount) {
+    const float clampedAmount = std::clamp(amount, 0.0f, 1.0f);
+    const float inverse = 1.0f - clampedAmount;
+    return {
+        from.r * inverse + to.r * clampedAmount,
+        from.g * inverse + to.g * clampedAmount,
+        from.b * inverse + to.b * clampedAmount,
+        from.a * inverse + to.a * clampedAmount
     };
 }
 

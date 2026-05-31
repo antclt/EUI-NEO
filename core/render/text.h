@@ -1,7 +1,9 @@
 #pragma once
 
-#include "core/render/primitive.h"
+#include "core/render/render_types.h"
 #include "core/render/text_types.h"
+
+#include <glad/glad.h>
 
 #include <memory>
 #include <cstdint>
