@@ -1,0 +1,82 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "glfw-debug",
+      "displayName": "GLFW Debug",
+      "description": "Default GLFW window backend, debug build.",
+      "binaryDir": "${sourceDir}/build/glfw-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "EUI_WINDOW_BACKEND": "glfw",
+        "EUI_DEPS_MODE": "auto"
+      }
+    },
+    {
+      "name": "glfw-release",
+      "displayName": "GLFW Release",
+      "description": "Default GLFW window backend, release build.",
+      "binaryDir": "${sourceDir}/build/glfw-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EUI_WINDOW_BACKEND": "glfw",
+        "EUI_DEPS_MODE": "auto"
+      }
+    },
+    {
+      "name": "sdl2-debug",
+      "displayName": "SDL2 Debug",
+      "description": "SDL2 window backend with a system SDL2 package.",
+      "binaryDir": "${sourceDir}/build/sdl2-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "EUI_WINDOW_BACKEND": "sdl2",
+        "EUI_DEPS_MODE": "auto"
+      }
+    },
+    {
+      "name": "sdl2-release",
+      "displayName": "SDL2 Release",
+      "description": "SDL2 window backend with a system SDL2 package.",
+      "binaryDir": "${sourceDir}/build/sdl2-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EUI_WINDOW_BACKEND": "sdl2",
+        "EUI_DEPS_MODE": "auto"
+      }
+    },
+    {
+      "name": "sdl2-fetch-release",
+      "displayName": "SDL2 Fetch Release",
+      "description": "SDL2 window backend, fetching the pinned SDL2 source during configure.",
+      "binaryDir": "${sourceDir}/build/sdl2-fetch-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EUI_WINDOW_BACKEND": "sdl2",
+        "EUI_DEPS_MODE": "fetch"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "glfw-debug",
+      "configurePreset": "glfw-debug"
+    },
+    {
+      "name": "glfw-release",
+      "configurePreset": "glfw-release"
+    },
+    {
+      "name": "sdl2-debug",
+      "configurePreset": "sdl2-debug"
+    },
+    {
+      "name": "sdl2-release",
+      "configurePreset": "sdl2-release"
+    },
+    {
+      "name": "sdl2-fetch-release",
+      "configurePreset": "sdl2-fetch-release"
+    }
+  ]
+}
