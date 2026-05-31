@@ -1,13 +1,13 @@
 ---
 name: eui-neo-dev
-description: Use this skill when developing or modifying EUI-NEO apps, DSL pages, reusable components, or related runtime integrations in this repository. Covers app/*.cpp entry pages, components/*.h builders, core DSL usage, window/page flow, async tasks, network usage, and the project conventions AI developers should follow.
+description: Use this skill when developing or modifying EUI-NEO apps, DSL pages, reusable components, or related runtime integrations in this repository. Covers examples/*.cpp entry pages, components/*.h builders, core DSL usage, window/page flow, async tasks, network usage, and the project conventions AI developers should follow.
 ---
 
 # EUI-NEO Developer Skill
 
 This repository is a C++17 UI framework built on OpenGL + GLFW. The recommended development surface is:
 
-- `app/*.cpp` for standalone app pages and demos
+- `examples/*.cpp` for standalone app pages and demos
 - `components/*.h` for reusable UI components
 - `core/dsl.h` and `core::dsl::Runtime` as the only rendering/event/layout abstraction
 
@@ -15,11 +15,11 @@ Use this skill when the task is to build a page, add a component, extend an exis
 
 ## What This Project Is
 
-- `main.cpp` owns the GLFW window loop, frame throttling, render scheduling, tray behavior, and multi-window lifecycle.
-- `app/dsl_app.h` is the main app adapter. Most app work only needs `dslAppConfig()` and `compose(...)`.
+- `core/app/glfw_app_main.cpp` owns the GLFW window loop, frame throttling, render scheduling, tray behavior, and multi-window lifecycle.
+- `include/eui/dsl_app.h` is the main app adapter. Most app work only needs `dslAppConfig()` and `compose(...)`.
 - `components/` is a thin builder layer over the DSL. Components do not own OpenGL primitives directly.
 - `core/` contains the real engine pieces: DSL, runtime, layout, events, animation, text, image, async, network, platform.
-- `CMakeLists.txt` builds one executable per `app/*.cpp`.
+- `CMakeLists.txt` builds one executable per `examples/*.cpp`.
 
 ## First Read
 
@@ -37,8 +37,8 @@ Do not bulk-load all docs unless the task truly spans multiple layers.
 
 Write EUI-NEO in this direction:
 
-1. App/page state lives in `app/*.cpp`, usually in an anonymous namespace.
-2. `compose(core::dsl::Ui& ui, const core::dsl::Screen& screen)` declares the whole page from current state.
+1. App/page state lives in `examples/*.cpp`, usually in an anonymous namespace.
+2. `compose(eui::Ui& ui, const eui::Screen& screen)` declares the whole page from current state.
 3. Components only compose DSL trees and emit callbacks with next values.
 4. `core::dsl::Runtime` handles layout, hit-testing, focus, animation, dirty rects, and primitive sync.
 5. Callbacks mutate page state, then Runtime decides whether to re-compose and re-render.
@@ -49,36 +49,35 @@ Do not write code as if this were an immediate-mode raw OpenGL app. The DSL is t
 
 - Keep element ids stable across recomposes.
 - For component internals, derive child ids as `id + ".part"`.
-- Prefer `#include "components/components.h"` in app pages.
+- Prefer `#include "eui_neo.h"` in app pages.
 - Keep components controlled whenever possible: page passes current value, callback returns next value.
 - Do not let components own business state or hidden page lifecycle.
 - Do not bypass Runtime by reading raw GLFW mouse state in app/component code.
 - Do not create a second rendering abstraction beside the DSL.
-- Prefer editing `app/` and `components/` first. Touch `core/` only when the task truly requires new framework capability.
+- Prefer editing `examples/`, `include/eui/`, and `components/` first. Touch `core/` only when the task truly requires new framework capability.
 - `core/` naming must stay generic. Do not introduce business-specific names like `chooseMediaFile` in platform/runtime/core APIs when the real capability is generic file selection, process launch, etc.
 - If a capability is generic but one app uses it for a specific scenario, keep the generic API in `core/` and let the app supply business-specific options or wrappers.
 - Default app state should be honest. Do not pre-populate fake/demo/business data unless the user explicitly asks for seeded sample content.
 
 ## Repository Map
 
-- `app/app.h`: app lifecycle interface used by `main.cpp`
-- `app/dsl_app.h`: recommended app adapter and helpers like `openWindow(...)` and `app::async`
-- `app/*.cpp`: each file is a standalone executable target
+- `include/eui/app.h`: app lifecycle interface used by `core/app/glfw_app_main.cpp`
+- `include/eui/dsl_app.h`: recommended app adapter and helpers like `openWindow(...)` and `app::async`
+- `examples/*.cpp`: each file is a standalone executable target
 - `components/components.h`: aggregate export for component layer
 - `components/theme.h`: theme tokens and visual helpers
 - `core/dsl.h`: DSL builders and shared element properties
 - `core/layout.h`: layout rules for `Row`, `Column`, `Stack`
-- `core/event.h`: pointer, focus, text input, drag, scroll
+- `core/platform/event.h`: pointer, focus, text input, drag, scroll
 - `core/async.*`: background work queue
 - `core/network.*`: simple GET/text/image networking
 
 ## Building A New App Page
 
-Create a new file under `app/`, then implement:
+Create a new file under `examples/`, then implement:
 
 ```cpp
-#include "app/dsl_app.h"
-#include "components/components.h"
+#include "eui_neo.h"
 
 namespace app {
 
@@ -91,7 +90,7 @@ const DslAppConfig& dslAppConfig() {
     return config;
 }
 
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
+void compose(eui::Ui& ui, const eui::Screen& screen) {
     ui.stack("root")
         .size(screen.width, screen.height)
         .content([&] {
@@ -107,7 +106,7 @@ Rules:
 
 - `pageId` must be stable.
 - Use `screen.width` and `screen.height` as logical size, not framebuffer pixel size.
-- Put mutable page state in an anonymous namespace in the same `app/*.cpp`.
+- Put mutable page state in an anonymous namespace in the same `examples/*.cpp`.
 - Let callbacks mutate that state directly.
 - Use `components::theme` tokens when the page needs a coherent visual system.
 - Prefer layout-first page composition: build sections with `row`, `column`, `stack`, `gap`, `margin`, `align`, `fill`, and `wrapContent` before reaching for manual `.x(...)` / `.y(...)` math.
@@ -122,7 +121,7 @@ Follow this shape:
 1. Define a `Style` struct seeded from `components::theme::ThemeColorTokens`.
 2. Define a `Builder` class storing config and callbacks.
 3. Compose only DSL nodes in `build()`.
-4. Expose a free function like `inline ButtonBuilder button(core::dsl::Ui& ui, const std::string& id)`.
+4. Expose a free function like `inline ButtonBuilder button(eui::Ui& ui, const std::string& id)`.
 5. Export the header from `components/components.h`.
 
 Use existing files as reference patterns:
@@ -155,7 +154,7 @@ Avoid these mistakes:
 ## Easy-To-Miss UI Pitfalls
 
 - In this DSL, text that should look vertically centered usually needs `verticalAlign(core::VerticalAlign::Center)` plus a `lineHeight(...)` near the actual font size. Do not blindly set `lineHeight` to the full control height, or the text can look visually top-biased even when the frame is centered.
-- For scrollable pages like `app/gallery.cpp`, prefer `components::scrollView(...)` or a layout measurement pass instead of maintaining magic height sums by hand. If width changes when a scrollbar appears, do a second measurement pass with the reduced content width.
+- For scrollable pages like `examples/gallery.cpp`, prefer `components::scrollView(...)` or a layout measurement pass instead of maintaining magic height sums by hand. If width changes when a scrollbar appears, do a second measurement pass with the reduced content width.
 - `flow` is the default choice for responsive button groups, chip rows, picker rows, and property-card grids. Do not manually wrap rows with ad-hoc `if (x > width)` math in app code.
 - Use `padding(...)` for container insets first. Do not create extra wrapper layers or hand-subtract inner widths unless the component API truly requires it.
 - Use `minWidth/maxWidth/flexGrow/flexShrink` to express responsive intent before writing repeated `std::min/std::max` width formulas in pages.
@@ -209,7 +208,7 @@ Use nested containers and margins instead of inventing a new layout system.
 
 Preferred page pattern:
 
-- Anonymous-namespace state in `app/*.cpp`
+- Anonymous-namespace state in `examples/*.cpp`
 - UI reads state during `compose(...)`
 - Callbacks write next state
 - Runtime re-composes as needed
@@ -241,7 +240,7 @@ For gesture-heavy input:
 
 ## Windows, Tray, And Multi-Page Apps
 
-When a task requires extra windows, use `app::openWindow(...)` from `app/dsl_app.h`.
+When a task requires extra windows, use `app::openWindow(...)` from `include/eui/dsl_app.h`.
 
 - Use `DslWindowConfig` for title, page id, size, background, modal behavior.
 - Use `.modal(true)` only when the main window should stop handling normal input while the child is active.
@@ -251,7 +250,7 @@ Do not add a second custom window loop unless the task explicitly requires frame
 
 ## Async And Network
 
-For background tasks, prefer `app::async` from `app/dsl_app.h`.
+For background tasks, prefer `app::async` from `include/eui/dsl_app.h`.
 
 - `runOnce(...)` for one-shot loading
 - `restart(...)` for refresh/search/retry flows
@@ -297,16 +296,16 @@ cmake --build build --config Release
 
 Target naming rule:
 
-- `app/gallery.cpp` -> `gallery`
-- `app/demo.cpp` -> `demo`
-- `app/my_app.cpp` -> `my_app`
+- `examples/gallery.cpp` -> `gallery`
+- `examples/demo.cpp` -> `demo`
+- `examples/my_app.cpp` -> `my_app`
 
 ## Good Local References
 
-- `app/demo.cpp`: smallest DSL page example
-- `app/gallery.cpp`: best broad reference for components, themes, animation, network, and composed layouts
-- `app/clock.cpp`: custom app styling and large page composition
-- `app/serial_tool.cpp`: tray-enabled app and dashboard-style composition
+- `examples/demo.cpp`: smallest DSL page example
+- `examples/gallery.cpp`: best broad reference for components, themes, animation, network, and composed layouts
+- `examples/clock.cpp`: custom app styling and large page composition
+- `examples/serial_tool.cpp`: tray-enabled app and dashboard-style composition
 - `components/button.h`: canonical builder style
 - `components/input.h`: most complex interaction-heavy component
 
@@ -316,7 +315,7 @@ When implementing a feature in this repo, default to this order:
 
 1. Understand whether the request is app-level, component-level, or framework-level.
 2. Read only the relevant docs and one or two nearby code examples.
-3. Make the smallest change in `app/` or `components/` that fits existing conventions.
+3. Make the smallest change in `examples/`, `include/eui/`, or `components/` that fits existing conventions.
 4. Touch `core/` only if the current DSL/runtime truly lacks the required capability.
 5. Build and verify the specific affected target.
 

@@ -42,6 +42,13 @@ Requirements:
 
 Build-time sources for GLFW, glad, tray, FreeType, HarfBuzz, libpng, and zlib are vendored under `3rd/`. The default dependency mode is `auto`: CMake uses the local `3rd/` sources when they are present, and fetches only missing dependencies from pinned upstream URLs. Use `-DEUI_DEPS_MODE=bundled` for strict offline builds, or `-DEUI_DEPS_MODE=fetch` to force online dependency fetches. HarfBuzz shaping is enabled by default and can be disabled with `-DEUI_ENABLE_HARFBUZZ=OFF`.
 
+GLFW is the default window backend. SDL2 is optional and is not vendored: build it with a system SDL2 package, or explicitly fetch SDL2 during configure:
+
+```sh
+cmake -S . -B build-sdl2 -DCMAKE_BUILD_TYPE=Release -DEUI_WINDOW_BACKEND=sdl2
+cmake -S . -B build-sdl2-fetch -DCMAKE_BUILD_TYPE=Release -DEUI_WINDOW_BACKEND=sdl2 -DEUI_DEPS_MODE=fetch
+```
+
 macOS / Linux example:
 
 ```sh
@@ -62,33 +69,68 @@ Linux package hint:
 
 ```sh
 sudo apt-get install -y ninja-build libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libcurl4-openssl-dev
+# Optional for -DEUI_WINDOW_BACKEND=sdl2:
+sudo apt-get install -y libsdl2-dev
 ```
 
-Top-level builds create one executable for each `app/*.cpp` page source, such as `gallery` and `demo`. After build, `assets/` is copied next to the executable automatically.
+Top-level builds create one executable for each `examples/*.cpp` page source, such as `gallery` and `demo`. After build, `assets/` is copied next to the executable automatically.
 
 Tagged releases (`v*`) build Windows, Linux, and macOS packages through GitHub Actions and upload only runtime packages as release assets.
 
 ## Use In Your Project
 
-EUI-NEO also exposes a CMake library target for external C++ projects:
+There are three practical integration paths. Start with the public facade header unless you already need a custom window loop.
+
+### 1. Public Facade Header
+
+This is the simplest app-level integration. Your app source includes one public header:
+
+```cpp
+#include "eui_neo.h"
+```
+
+Add EUI-NEO as a subdirectory and use the provided app main source:
 
 ```cmake
 add_subdirectory(external/EUI-NEO)
 
-add_executable(my_app external/EUI-NEO/main.cpp app.cpp)
+add_executable(my_app external/EUI-NEO/core/app/glfw_app_main.cpp app.cpp)
 eui_neo_configure_app(my_app)
 ```
 
-For the easiest path, download EUI-NEO into `external/EUI-NEO`, add the snippet above, and implement `app::dslAppConfig()` plus `app::compose()` in `app.cpp`. EUI-NEO will own the GLFW window, event loop, OpenGL rendering, and asset copying. When EUI-NEO is added as a subdirectory, bundled examples are disabled by default. Set `-DEUI_BUILD_APPS=ON` to build `gallery`, `demo`, and the other sample apps. See [Integration Guide](docs/集成指南.md) for the beginner setup, `FetchContent`, and embedded GLFW loop examples.
+Implement `app::dslAppConfig()` and `app::compose()` in `app.cpp`. EUI-NEO owns the window, event loop, OpenGL rendering, and asset copying. This is a single public facade include, not a pure header-only library.
+
+GLFW is the default backend. For SDL2, configure with `-DEUI_WINDOW_BACKEND=sdl2` and use `external/EUI-NEO/core/app/sdl2_app_main.cpp` instead of the GLFW app main source.
+
+### 2. Static Library Target
+
+For an existing application or a custom main loop, link the exported static library target directly:
+
+```cmake
+add_subdirectory(external/EUI-NEO)
+
+add_executable(my_app main.cpp app.cpp)
+target_link_libraries(my_app PRIVATE eui::neo)
+eui_neo_copy_assets(my_app)
+```
+
+Use this path when your project already owns the native window, OpenGL context, event pump, or application lifecycle. Keep `#include "eui_neo.h"` for normal UI code; only the integration boundary should include lower-level runtime headers.
+
+### 3. Develop Inside `examples/`
+
+For quick experiments or new built-in demos, add a new file such as `examples/my_app.cpp`, include `eui_neo.h`, and implement `app::dslAppConfig()` plus `app::compose()`. Top-level builds automatically create one executable per `examples/*.cpp` file.
+
+When EUI-NEO is added as a subdirectory, bundled examples are disabled by default. Set `-DEUI_BUILD_APPS=ON` to build `gallery`, `demo`, `serial_tool`, and the other sample apps. See [Integration Guide](docs/集成指南.md) for complete CMake snippets, `FetchContent`, and embedded GLFW loop notes.
 
 ## Project Layout
 
 ```text
-app/          Page entry points and gallery examples
 assets/       Runtime assets: fonts, PNG, SVG, and icons
 components/   Reusable UI components built on top of the DSL
 core/         DSL, Runtime, primitives, text, image, network, and platform code
 docs/         Implementation notes and API documentation
+examples/     Standalone gallery and demo application sources
+include/      Public include path: eui_neo.h and eui/* facade headers
 3rd/          Vendored third-party build sources and single-file dependencies
 ```
 

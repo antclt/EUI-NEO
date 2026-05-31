@@ -1,6 +1,6 @@
 # DSL 设计与当前实现
 
-当前推荐写法是声明式 DSL：应用只描述页面结构、样式、交互回调和目标状态，`core::dsl::Runtime` 负责布局、状态缓存、事件、动画、脏区渲染和 OpenGL primitive 同步。
+当前推荐写法是声明式 DSL：应用只描述页面结构、样式、交互回调和目标状态，内部 Runtime 负责布局、状态缓存、事件、动画、脏区渲染和 OpenGL primitive 同步。
 
 ## 核心元素
 
@@ -31,17 +31,17 @@ enum class ElementKind {
 DSL app 推荐只实现：
 
 ```cpp
-#include "app/dsl_app.h"
+#include "eui_neo.h"
 
 namespace app {
 
 const DslAppConfig& dslAppConfig();
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen);
+void compose(eui::Ui& ui, const eui::Screen& screen);
 
 } // namespace app
 ```
 
-`app/dsl_app.h` 已封装：
+`include/eui/dsl_app.h` 已封装：
 
 - initialize
 - update
@@ -66,7 +66,7 @@ static const DslAppConfig config = DslAppConfig{}
 
 托盘后台运行默认关闭。需要托盘的页面可以在 `DslAppConfig` 中显式调用 `.tray(true)`，例如串口工具。启用托盘后，关闭或最小化窗口会隐藏到托盘并释放图形资源；托盘 `Show` 会重新显示窗口，`Exit` 才真正退出。
 
-不设置 `.textFont(...)` 时使用 `core/text.cpp` 顶部的全局默认文本字体；不设置 `.iconFont(...)` 时使用全局默认图标字体。
+不设置 `.textFont(...)` 时使用 `core/render/text.cpp` 顶部的全局默认文本字体；不设置 `.iconFont(...)` 时使用全局默认图标字体。
 
 ## 布局 DSL
 
@@ -94,9 +94,9 @@ ui.stack("root")
 .margin(left, top, right, bottom)
 .gap(value)
 .spacing(value)
-.justifyContent(core::Align::CENTER)
-.alignItems(core::Align::CENTER)
-.align(core::Align::CENTER, core::Align::CENTER)
+.justifyContent(eui::Align::CENTER)
+.alignItems(eui::Align::CENTER)
+.align(eui::Align::CENTER, eui::Align::CENTER)
 .zIndex(value)
 .clip()
 .overflowHidden()
@@ -114,8 +114,8 @@ ui.stack("root")
 .interactive(true)
 .disabled(false)
 .enabled(true)
-.cursor(core::CursorShape::Hand)
-.hitTestMode(core::dsl::HitTestMode::Transformed)
+.cursor(eui::CursorShape::Hand)
+.hitTestMode(eui::dsl::HitTestMode::Transformed)
 .transformedHitTest()
 .onClick(callback)
 .onPress(callback)
@@ -129,7 +129,7 @@ ui.stack("root")
 .onDrag(callback)
 ```
 
-`.onClick(...)` 会自动开启 interactive，并把 cursor 设置为手型。Runtime 会做 topmost hit-test、按下捕获、点击判定和回调派发。默认命中使用布局矩形；需要旋转、缩放或 2.5D 投影后的视觉区域参与命中时，用 `.hitTestMode(core::dsl::HitTestMode::Transformed)` 或 `.transformedHitTest()`。`HitTestMode::Layout` 是默认布局命中，`Transformed` 会按当前投影矩阵反算命中，`None` 表示该元素自身不参与命中。
+`.onClick(...)` 会自动开启 interactive，并把 cursor 设置为手型。Runtime 会做 topmost hit-test、按下捕获、点击判定和回调派发。默认命中使用布局矩形；需要旋转、缩放或 2.5D 投影后的视觉区域参与命中时，用 `.hitTestMode(eui::dsl::HitTestMode::Transformed)` 或 `.transformedHitTest()`。`HitTestMode::Layout` 是默认布局命中，`Transformed` 会按当前投影矩阵反算命中，`None` 表示该元素自身不参与命中。
 
 底层 DSL 的 `onPress/onRelease/onDrag/onScroll` 回调直接使用 Runtime 原始事件。页面或组件需要 tap、拖拽阈值、滚轮步进、局部坐标、进入/离开 hover 时，优先用组件层的 `components::mouseArea(ui, id)`。
 
@@ -141,7 +141,7 @@ ui.text("github.link")
     .text("GitHub")
     .color(accent)
     .onClick([] {
-        core::platform::openUrl("https://github.com/sudoevolve/EUI-NEO");
+        eui::platform::openUrl("https://github.com/sudoevolve/EUI-NEO");
     })
     .build();
 ```
@@ -155,7 +155,7 @@ ui.rect("card")
     .radius(18.0f)
     .border(1.0f, {0.23f, 0.29f, 0.38f, 1.0f})
     .shadow(26.0f, 0.0f, 8.0f, {0.0f, 0.0f, 0.0f, 0.26f})
-    .transition(0.2f, core::Ease::OutCubic)
+    .transition(0.2f, eui::Ease::OutCubic)
     .build();
 ```
 
@@ -199,8 +199,8 @@ ui.text("title")
     .fontSize(38.0f)
     .lineHeight(44.0f)
     .color({0.94f, 0.97f, 1.0f, 1.0f})
-    .horizontalAlign(core::HorizontalAlign::Center)
-    .verticalAlign(core::VerticalAlign::Center)
+    .horizontalAlign(eui::HorizontalAlign::Center)
+    .verticalAlign(eui::VerticalAlign::Center)
     .build();
 ```
 
@@ -236,7 +236,7 @@ Text 支持：
 .lineHeight(...)
 ```
 
-`.icon(...)` 会自动使用图标字体；图标字体默认来自 `core/text.cpp`，也可以通过配置里的 `.iconFont(...)` 按 app 覆盖。
+`.icon(...)` 会自动使用图标字体；图标字体默认来自 `core/render/text.cpp`，也可以通过配置里的 `.iconFont(...)` 按 app 覆盖。
 
 底层文本使用 FreeType 渲染 glyph，启用 HarfBuzz 时会进行复杂文本 shaping。`fontFamily("monospace")` 是跨平台等宽字体别名，`fontFamily("Emoji")` 会选择平台 emoji 字体。需要精确光标位置或命中测试时，使用 `core::TextPrimitive::measureTextMetrics(...)` 获取 shaped caret stops；返回的 `byteIndices` 是 UTF-8 byte offset，`caretX` 是对应的逻辑 x，和实际渲染使用同一套 fallback、emoji 缩放和 glyph advance。
 
@@ -268,7 +268,7 @@ Image 支持：
 .path(path)
 .url(url)
 .bingDaily(idx, mkt)
-.fit(core::ImageFit::Cover)
+.fit(eui::ImageFit::Cover)
 .cover()
 .contain()
 .stretch()
@@ -339,8 +339,8 @@ ui.stack("flip.card")
     .rotateY(open ? 3.14159f : 0.0f)
     .perspective(520.0f)
     .transformOrigin(0.5f, 0.5f)
-    .transition(0.42f, core::Ease::OutBack)
-    .animate(core::AnimProperty::Transform)
+    .transition(0.42f, eui::Ease::OutBack)
+    .animate(eui::AnimProperty::Transform)
     .content([&] {
         ui.rect("flip.card.bg")
             .size(220.0f, 132.0f)
@@ -386,14 +386,14 @@ ui.rect("actor")
     .x(active ? 420.0f : 40.0f)
     .opacity(active ? 0.4f : 1.0f)
     .rotate(active ? 0.4f : 0.0f)
-    .transition(0.42f, core::Ease::OutBack)
-    .animate(core::AnimProperty::Frame |
-             core::AnimProperty::Opacity |
-             core::AnimProperty::Transform)
+    .transition(0.42f, eui::Ease::OutBack)
+    .animate(eui::AnimProperty::Frame |
+             eui::AnimProperty::Opacity |
+             eui::AnimProperty::Transform)
     .build();
 ```
 
-Frame 动画需要显式 `.animate(core::AnimProperty::Frame)`。窗口大小变化、页面切换导致的普通布局尺寸变化不会默认产生长宽动画。
+Frame 动画需要显式 `.animate(eui::AnimProperty::Frame)`。窗口大小变化、页面切换导致的普通布局尺寸变化不会默认产生长宽动画。
 
 容器 `Row` / `Column` / `Stack` 也支持 `opacity` 和 transform。Runtime 会把容器的 `translate`、`scale`、`rotate`、`rotateX`、`rotateY`、`translateZ`、`perspective`、`transformOrigin` 组合成投影矩阵并继承到子树，因此弹窗、下拉、菜单、卡片翻转和透视动画会作用到内部 Rect / Text / Image / Polygon。布局占位仍由未 transform 的逻辑 frame 决定。
 
@@ -454,7 +454,7 @@ components::button(ui, "save")
 
 ## Runtime 行为
 
-`core::dsl::Runtime` 负责：
+内部 Runtime 负责：
 
 - 持有 `Ui`。
 - 调用 `ui.layout()` 计算逻辑坐标。
@@ -468,7 +468,7 @@ components::button(ui, "save")
 - 处理 DPI scale。
 - render / shutdown。
 
-纯 hover / press / transition 视觉变化不会重新 compose 页面。click 回调通常会修改 app 状态，因此 Runtime 会设置 `needsCompose()`，`app/dsl_app.h` 再重新 compose 并保守触发 full redraw。
+纯 hover / press / transition 视觉变化不会重新 compose 页面。click 回调通常会修改 app 状态，因此 Runtime 会设置 `needsCompose()`，`include/eui/dsl_app.h` 再重新 compose 并保守触发 full redraw。
 
 ## 当前限制
 

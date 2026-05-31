@@ -42,6 +42,13 @@ EUI-NEO 是一个基于 C++17、OpenGL 和 GLFW 的跨平台高性能轻量级 U
 
 GLFW、glad、tray、FreeType、HarfBuzz、libpng、zlib 等构建期第三方源码已内置在 `3rd/` 下。默认依赖模式是 `auto`：本地 `3rd/` 源码存在时直接使用，缺失时才从固定上游地址联网拉取。需要严格离线构建时，可配置 `-DEUI_DEPS_MODE=bundled`；需要强制联网拉取时，可配置 `-DEUI_DEPS_MODE=fetch`。HarfBuzz shaping 默认启用，可通过 `-DEUI_ENABLE_HARFBUZZ=OFF` 关闭。
 
+默认窗口后端是 GLFW。SDL2 是可选后端，不放进 `3rd/`：构建 SDL2 后端时，要么使用系统 SDL2 包，要么显式选择 fetch 下载 SDL2：
+
+```sh
+cmake -S . -B build-sdl2 -DCMAKE_BUILD_TYPE=Release -DEUI_WINDOW_BACKEND=sdl2
+cmake -S . -B build-sdl2-fetch -DCMAKE_BUILD_TYPE=Release -DEUI_WINDOW_BACKEND=sdl2 -DEUI_DEPS_MODE=fetch
+```
+
 macOS / Linux 示例：
 
 ```sh
@@ -62,33 +69,68 @@ Linux 依赖提示：
 
 ```sh
 sudo apt-get install -y ninja-build libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libcurl4-openssl-dev
+# -DEUI_WINDOW_BACKEND=sdl2 可选安装：
+sudo apt-get install -y libsdl2-dev
 ```
 
-顶层构建会为 `app/*.cpp` 下的每个页面源文件生成一个可执行程序，例如 `gallery` 和 `demo`。构建后会自动把 `assets/` 复制到可执行文件目录。
+顶层构建会为 `examples/*.cpp` 下的每个页面源文件生成一个可执行程序，例如 `gallery` 和 `demo`。构建后会自动把 `assets/` 复制到可执行文件目录。
 
 推送 `v*` tag 后，GitHub Actions 会构建 Windows、Linux、macOS 包，并且 release assets 只上传运行包。
 
 ## 接入到你的项目
 
-EUI-NEO 也提供给外部 C++ 项目使用的 CMake 库 target：
+推荐按下面三种方式选择。普通应用先走公共 facade 头文件，只有已有窗口循环时再直接接静态库。
+
+### 1. 公共头文件方式
+
+这是最简单的完整 app 接入方式。你的应用源码只需要包含公共入口：
+
+```cpp
+#include "eui_neo.h"
+```
+
+把 EUI-NEO 作为子目录加入，并使用框架提供的 app main：
 
 ```cmake
 add_subdirectory(external/EUI-NEO)
 
-add_executable(my_app external/EUI-NEO/main.cpp app.cpp)
+add_executable(my_app external/EUI-NEO/core/app/glfw_app_main.cpp app.cpp)
 eui_neo_configure_app(my_app)
 ```
 
-最简单的方式是把 EUI-NEO 下载到 `external/EUI-NEO`，加入上面的 CMake 片段，然后在 `app.cpp` 里实现 `app::dslAppConfig()` 和 `app::compose()`。EUI-NEO 会接管 GLFW 窗口、事件循环、OpenGL 渲染和资源复制。EUI-NEO 作为子目录接入时，默认不会构建仓库自带示例。需要构建 `gallery`、`demo` 等示例时，配置 `-DEUI_BUILD_APPS=ON`。小白接入、`FetchContent` 和嵌入已有 GLFW 主循环的写法见 [集成指南](docs/集成指南.md)。
+然后在 `app.cpp` 里实现 `app::dslAppConfig()` 和 `app::compose()`。EUI-NEO 会接管窗口、事件循环、OpenGL 渲染和资源复制。这里是“单个公共 facade 头文件入口”，不是纯 header-only 库。
+
+默认窗口后端是 GLFW。需要 SDL2 时，配置 `-DEUI_WINDOW_BACKEND=sdl2`，并把 app main 换成 `external/EUI-NEO/core/app/sdl2_app_main.cpp`。
+
+### 2. 静态库方式
+
+如果你的项目已经有自己的 main、窗口、OpenGL context 或事件循环，可以直接链接导出的静态库 target：
+
+```cmake
+add_subdirectory(external/EUI-NEO)
+
+add_executable(my_app main.cpp app.cpp)
+target_link_libraries(my_app PRIVATE eui::neo)
+eui_neo_copy_assets(my_app)
+```
+
+普通 UI 代码仍然优先 `#include "eui_neo.h"`；只有接入边界需要碰底层 runtime / platform 头文件。
+
+### 3. 直接在 `examples/` 开发
+
+快速实验或新增内置示例时，直接创建 `examples/my_app.cpp`，包含 `eui_neo.h`，实现 `app::dslAppConfig()` 和 `app::compose()`。顶层构建会自动为每个 `examples/*.cpp` 生成一个可执行程序。
+
+EUI-NEO 作为子目录接入时，默认不会构建仓库自带示例。需要构建 `gallery`、`demo`、`serial_tool` 等示例时，配置 `-DEUI_BUILD_APPS=ON`。完整 CMake 片段、`FetchContent` 和嵌入已有 GLFW 主循环的写法见 [集成指南](docs/集成指南.md)。
 
 ## 目录结构
 
 ```text
-app/          页面入口和 gallery 示例
 assets/       字体、PNG、SVG 和图标等运行资源
 components/   基于 DSL 封装的通用组件
 core/         DSL、Runtime、图元、文本、图片、网络和平台能力
 docs/         项目实现文档
+examples/     独立 gallery 和 demo 应用源码
+include/      公共 include 路径：eui_neo.h 和 eui/* facade 头文件
 3rd/          内置第三方构建源码和单文件依赖
 ```
 

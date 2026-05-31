@@ -19,7 +19,7 @@ review v0.3.7..HEAD，重点看跨平台行为、构建链路和输入文本
 指定模块：
 
 ```text
-review core/text.cpp components/input.h，不改代码，重点看 emoji、光标、撤回和 IME
+review core/render/text.cpp components/input.h，不改代码，重点看 emoji、光标、撤回和 IME
 ```
 
 ## 输出格式
@@ -37,7 +37,7 @@ Review 结果按这个顺序写：
 
 文本与输入：
 
-- `core/text.cpp`：字体 fallback、HarfBuzz shaping、FreeType metrics、emoji 渲染、测量与绘制一致性。
+- `core/render/text.cpp`：字体 fallback、HarfBuzz shaping、FreeType metrics、emoji 渲染、测量与绘制一致性。
 - `components/input.h`：光标定位、选择区、undo/redo、剪贴板、IME composition、emoji 与多字节文本。
 - 手动验证需覆盖英文、中文、emoji、混排、多行输入和连续撤回。
 
@@ -49,8 +49,8 @@ Review 结果按这个顺序写：
 
 平台与资源：
 
-- `core/platform.cpp`、`core/ime_bridge.c`：窗口事件、输入法桥接、平台条件编译。
-- `core/image.cpp`：PNG/SVG 加载、缓存、尺寸测量、失败路径。
+- `core/platform/platform.cpp`、`core/platform/ime_bridge.c`：窗口事件、输入法桥接、平台条件编译。
+- `core/render/image.cpp`：PNG/SVG 加载、缓存、尺寸测量、失败路径。
 - `assets/`、`docs/pic/`：确认是否真需要随源码提交，避免 release 源码包膨胀。
 
 ## 验证命令
