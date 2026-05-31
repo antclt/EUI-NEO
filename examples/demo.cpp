@@ -1,6 +1,4 @@
-#include "app/dsl_app.h"
-
-#include "components/components.h"
+#include "eui_neo.h"
 
 namespace app {
 
@@ -13,10 +11,10 @@ const DslAppConfig& dslAppConfig() {
     return config;
 }
 
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
+void compose(eui::Ui& ui, const eui::Screen& screen) {
     ui.stack("root")
         .size(screen.width, screen.height)
-        .align(core::Align::CENTER, core::Align::CENTER)
+        .align(eui::Align::CENTER, eui::Align::CENTER)
         .content([&] {
             components::panel(ui, "card")
                 .size(360.0f, 260.0f)
@@ -29,8 +27,8 @@ void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
             ui.column("content")
                 .size(360.0f, 260.0f)
                 .gap(8.0f)
-                .justifyContent(core::Align::CENTER)
-                .alignItems(core::Align::CENTER)
+                .justifyContent(eui::Align::CENTER)
+                .alignItems(eui::Align::CENTER)
                 .content([&] {
                     components::text(ui, "title")
                         .size(300.0f, 38.0f)
@@ -38,7 +36,7 @@ void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
                         .fontSize(30.0f)
                         .lineHeight(38.0f)
                         .color({0.94f, 0.97f, 1.0f, 1.0f})
-                        .horizontalAlign(core::HorizontalAlign::Center)
+                        .horizontalAlign(eui::HorizontalAlign::Center)
                         .build();
 
                     components::text(ui, "subtitle")
@@ -48,7 +46,7 @@ void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
                         .fontSize(24.0f)
                         .lineHeight(30.0f)
                         .color({0.62f, 0.70f, 0.82f, 1.0f})
-                        .horizontalAlign(core::HorizontalAlign::Center)
+                        .horizontalAlign(eui::HorizontalAlign::Center)
                         .build();
 
                     components::button(ui, "primary")

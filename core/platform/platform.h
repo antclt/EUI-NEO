@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-struct GLFWwindow;
+#include "core/platform/window_backend.h"
 
 namespace core::platform {
 
@@ -46,6 +46,6 @@ void pollTray(bool blocking = false);
 bool consumeTrayShowRequested();
 bool consumeTrayExitRequested();
 void shutdownTray();
-void setImeCursorRect(GLFWwindow* window, float x, float y, float width, float height);
+void setImeCursorRect(window::Handle window, float x, float y, float width, float height);
 
 } // namespace core::platform

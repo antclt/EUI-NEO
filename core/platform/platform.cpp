@@ -1,7 +1,7 @@
-#include "core/platform.h"
+#include "core/platform/platform.h"
 
-#include "core/ime_bridge.h"
-#include "core/tray_bridge.h"
+#include "core/platform/tray_bridge.h"
+#include "core/platform/window_backend.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -20,6 +20,12 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <commdlg.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#include <sys/wait.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#include <sys/wait.h>
 #else
 #include <sys/wait.h>
 #endif
@@ -457,6 +463,35 @@ std::filesystem::path resolveIconPath(const std::string& iconPath) {
         candidates.push_back(current / "assets" / requested.filename());
     }
 
+    fs::path executableDir;
+#if defined(__APPLE__)
+    char executablePath[4096];
+    uint32_t executablePathSize = sizeof(executablePath);
+    if (_NSGetExecutablePath(executablePath, &executablePathSize) == 0) {
+        error.clear();
+        executableDir = fs::absolute(fs::path(executablePath), error).parent_path();
+    }
+#elif defined(_WIN32)
+    char executablePath[MAX_PATH];
+    const DWORD executablePathSize = GetModuleFileNameA(nullptr, executablePath, MAX_PATH);
+    if (executablePathSize > 0 && executablePathSize < MAX_PATH) {
+        error.clear();
+        executableDir = fs::absolute(fs::path(executablePath), error).parent_path();
+    }
+#elif defined(__linux__)
+    char executablePath[4096];
+    const ssize_t executablePathSize = readlink("/proc/self/exe", executablePath, sizeof(executablePath) - 1);
+    if (executablePathSize > 0) {
+        executablePath[executablePathSize] = '\0';
+        error.clear();
+        executableDir = fs::absolute(fs::path(executablePath), error).parent_path();
+    }
+#endif
+    if (!executableDir.empty()) {
+        candidates.push_back(executableDir / requested);
+        candidates.push_back(executableDir / "assets" / requested.filename());
+    }
+
 #if defined(_WIN32)
     const std::size_t originalCount = candidates.size();
     std::vector<fs::path> icoCandidates;
@@ -612,8 +647,8 @@ void shutdownTray() {
     state = {};
 }
 
-void setImeCursorRect(GLFWwindow* window, float x, float y, float width, float height) {
-    eui_ime_set_cursor_rect(window, x, y, width, height);
+void setImeCursorRect(window::Handle window, float x, float y, float width, float height) {
+    core::window::setImeCursorRect(window, x, y, width, height);
 }
 
 } // namespace core::platform

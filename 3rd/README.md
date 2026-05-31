@@ -15,6 +15,8 @@ Bundled build dependencies:
 - `zlib-1.3.1`: zlib 1.3.1, trimmed to build-required sources
 - single-file headers already used by the project, such as `stb_image.h`, `stb_truetype.h`, and `nanosvg.h`
 
+SDL2 is intentionally not vendored. The default GLFW backend does not require SDL2. When configuring `-DEUI_WINDOW_BACKEND=sdl2`, use a system SDL2 package in `auto` mode or use `-DEUI_DEPS_MODE=fetch` to download the pinned SDL2 source.
+
 CMake dependency modes:
 
 - `auto` (default): use `3rd/` when present, and fetch only missing dependencies.

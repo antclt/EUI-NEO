@@ -1,7 +1,4 @@
-#include "app/dsl_app.h"
-
-#include "components/components.h"
-#include "core/network.h"
+#include "eui_neo.h"
 
 #include <algorithm>
 #include <array>
@@ -33,18 +30,18 @@ struct ClockState {
 };
 
 struct Palette {
-    core::Color bg;
-    core::Color surface;
-    core::Color surfaceHover;
-    core::Color surfacePressed;
-    core::Color text;
-    core::Color muted;
-    core::Color border;
-    core::Color strong;
-    core::Color strongText;
-    core::Color soft;
-    core::Color selectedMuted;
-    core::Shadow panelShadow;
+    eui::Color bg;
+    eui::Color surface;
+    eui::Color surfaceHover;
+    eui::Color surfacePressed;
+    eui::Color text;
+    eui::Color muted;
+    eui::Color border;
+    eui::Color strong;
+    eui::Color strongText;
+    eui::Color soft;
+    eui::Color selectedMuted;
+    eui::Shadow panelShadow;
 };
 
 constexpr std::array<CitySpec, 27> kCities{{
@@ -81,15 +78,15 @@ constexpr std::size_t kCityCount = kCities.size();
 constexpr int kDefaultCity = 20;
 constexpr std::size_t kMaxFavorites = 8;
 constexpr float kPi = 3.14159265358979323846f;
-constexpr core::Color kClear{0.0f, 0.0f, 0.0f, 0.0f};
+constexpr eui::Color kClear{0.0f, 0.0f, 0.0f, 0.0f};
 
 ClockState state;
 
-core::Color color(float r, float g, float b, float a = 1.0f) {
+eui::Color color(float r, float g, float b, float a = 1.0f) {
     return {r, g, b, a};
 }
 
-core::Color alpha(core::Color value, float amount) {
+eui::Color alpha(eui::Color value, float amount) {
     value.a *= std::clamp(amount, 0.0f, 1.0f);
     return value;
 }
@@ -259,10 +256,10 @@ std::string trim(std::string value) {
 std::string quoteText() {
     static bool requested = false;
     if (!requested) {
-        core::network::requestText("clock.quote", "https://v1.hitokoto.cn/?c=f&encode=text");
+        eui::network::requestText("clock.quote", "https://v1.hitokoto.cn/?c=f&encode=text");
         requested = true;
     }
-    const core::network::TextResult result = core::network::textResult("clock.quote");
+    const eui::network::TextResult result = eui::network::textResult("clock.quote");
     if (result.ready && result.ok) {
         std::string body = trim(result.body);
         if (!body.empty()) {
@@ -275,7 +272,7 @@ std::string quoteText() {
     return "Every city keeps the same minute in a different light.";
 }
 
-void label(core::dsl::Ui& ui,
+void label(eui::Ui& ui,
            const std::string& id,
            float x,
            float y,
@@ -283,8 +280,8 @@ void label(core::dsl::Ui& ui,
            float height,
            const std::string& text,
            float fontSize,
-           core::Color textColor,
-           core::HorizontalAlign align = core::HorizontalAlign::Left,
+           eui::Color textColor,
+           eui::HorizontalAlign align = eui::HorizontalAlign::Left,
            bool titleFont = false) {
     auto builder = ui.text(id)
         .x(x)
@@ -295,23 +292,23 @@ void label(core::dsl::Ui& ui,
         .lineHeight(height)
         .color(textColor)
         .horizontalAlign(align)
-        .verticalAlign(core::VerticalAlign::Center);
+        .verticalAlign(eui::VerticalAlign::Center);
     if (titleFont) {
         builder.customFont("YouSheBiaoTiHei");
     }
     builder.build();
 }
 
-void panel(core::dsl::Ui& ui,
+void panel(eui::Ui& ui,
            const std::string& id,
            float x,
            float y,
            float width,
            float height,
            float radius,
-           core::Color fill,
-           core::Color border = kClear,
-           core::Shadow shadow = {}) {
+           eui::Color fill,
+           eui::Color border = kClear,
+           eui::Shadow shadow = {}) {
     auto builder = ui.rect(id)
         .x(x)
         .y(y)
@@ -327,15 +324,15 @@ void panel(core::dsl::Ui& ui,
     builder.build();
 }
 
-void composeBrand(core::dsl::Ui& ui, float x, float y, const Palette& p) {
+void composeBrand(eui::Ui& ui, float x, float y, const Palette& p) {
     panel(ui, "brand.dot", x, y + 2.0f, 34.0f, 34.0f, 17.0f, p.strong);
     panel(ui, "brand.hand.v", x + 16.0f, y + 10.0f, 2.0f, 10.0f, 1.0f, p.strongText);
     panel(ui, "brand.hand.h", x + 16.0f, y + 19.0f, 7.0f, 2.0f, 1.0f, p.strongText);
     panel(ui, "brand.center", x + 15.0f, y + 18.0f, 4.0f, 4.0f, 2.0f, p.strongText);
-    label(ui, "brand.text", x + 46.0f, y + 3.0f, 170.0f, 34.0f, "TimeSpot", 28.0f, p.text, core::HorizontalAlign::Left, true);
+    label(ui, "brand.text", x + 46.0f, y + 3.0f, 170.0f, 34.0f, "TimeSpot", 28.0f, p.text, eui::HorizontalAlign::Left, true);
 }
 
-void composeSegmented(core::dsl::Ui& ui,
+void composeSegmented(eui::Ui& ui,
                       const std::string& id,
                       float x,
                       float y,
@@ -370,7 +367,7 @@ void composeSegmented(core::dsl::Ui& ui,
         .build();
 }
 
-void composeSearch(core::dsl::Ui& ui, float x, float y, float width, const Palette& p) {
+void composeSearch(eui::Ui& ui, float x, float y, float width, const Palette& p) {
     ui.stack("search.wrap")
         .x(x)
         .y(y)
@@ -439,7 +436,7 @@ void composeSearch(core::dsl::Ui& ui, float x, float y, float width, const Palet
                     .fontSize(15.0f)
                     .lineHeight(18.0f)
                     .color(p.text)
-                    .verticalAlign(core::VerticalAlign::Top)
+                    .verticalAlign(eui::VerticalAlign::Top)
                     .build();
 
                 ui.text(id + ".utc")
@@ -450,19 +447,19 @@ void composeSearch(core::dsl::Ui& ui, float x, float y, float width, const Palet
                     .fontSize(14.0f)
                     .lineHeight(18.0f)
                     .color(p.muted)
-                    .horizontalAlign(core::HorizontalAlign::Right)
-                    .verticalAlign(core::VerticalAlign::Top)
+                    .horizontalAlign(eui::HorizontalAlign::Right)
+                    .verticalAlign(eui::VerticalAlign::Top)
                     .build();
             }
         })
         .build();
 }
 
-void composeAnalogClock(core::dsl::Ui& ui, float x, float y, float size, const std::tm& tm, const Palette& p) {
+void composeAnalogClock(eui::Ui& ui, float x, float y, float size, const std::tm& tm, const Palette& p) {
     const float cx = x + size * 0.5f;
     const float cy = y + size * 0.5f;
     const float radius = size * 0.5f;
-    const core::Color face = state.night ? color(0.080f, 0.084f, 0.096f) : color(0.990f, 0.992f, 0.996f);
+    const eui::Color face = state.night ? color(0.080f, 0.084f, 0.096f) : color(0.990f, 0.992f, 0.996f);
 
     panel(ui, "analog.face", x, y, size, size, radius, face, p.border, p.panelShadow);
     panel(ui, "analog.inner", x + radius * 0.18f, y + radius * 0.18f, size - radius * 0.36f, size - radius * 0.36f, radius, p.soft, kClear);
@@ -484,7 +481,7 @@ void composeAnalogClock(core::dsl::Ui& ui, float x, float y, float size, const s
             .build();
     }
 
-    auto hand = [&](const std::string& id, float angle, float width, float length, core::Color handColor) {
+    auto hand = [&](const std::string& id, float angle, float width, float length, eui::Color handColor) {
         const float tail = length * 0.14f;
         ui.rect(id)
             .x(cx - width * 0.5f)
@@ -506,7 +503,7 @@ void composeAnalogClock(core::dsl::Ui& ui, float x, float y, float size, const s
     panel(ui, "analog.pin", cx - 6.0f, cy - 6.0f, 12.0f, 12.0f, 6.0f, p.strong);
 }
 
-void composeHero(core::dsl::Ui& ui, float x, float y, float width, const CitySpec& city, const Palette& p) {
+void composeHero(eui::Ui& ui, float x, float y, float width, const CitySpec& city, const Palette& p) {
     const std::tm now = timeAtOffset(city.offsetMinutes);
     const std::string time = formatTime(now, true, state.use24Hour);
     const float analogSize = std::clamp(width * 0.22f, 180.0f, 240.0f);
@@ -515,18 +512,18 @@ void composeHero(core::dsl::Ui& ui, float x, float y, float width, const CitySpe
     const float timeSize = std::clamp(timeWidth / 5.4f, 104.0f, 178.0f);
 
     label(ui, "hero.city.kicker", x + 4.0f, y, 260.0f, 28.0f, "Current", 22.0f, p.muted);
-    label(ui, "hero.time", x, y + 26.0f, timeWidth, 180.0f, time, timeSize, p.text, core::HorizontalAlign::Left, true);
+    label(ui, "hero.time", x, y + 26.0f, timeWidth, 180.0f, time, timeSize, p.text, eui::HorizontalAlign::Left, true);
     label(ui, "hero.location", x + 4.0f, y + 198.0f, width * 0.42f, 34.0f, std::string(city.name) + ", " + city.country, 24.0f, p.text);
     label(ui, "hero.date", x + width * 0.36f, y + 198.0f, width * 0.34f, 34.0f, formatDate(now), 24.0f, p.muted);
-    label(ui, "hero.utc", analogX, y + analogSize + 12.0f, analogSize, 28.0f, city.utcText, 18.0f, p.muted, core::HorizontalAlign::Center);
+    label(ui, "hero.utc", analogX, y + analogSize + 12.0f, analogSize, 28.0f, city.utcText, 18.0f, p.muted, eui::HorizontalAlign::Center);
 
     composeAnalogClock(ui, analogX, y + 8.0f, analogSize, now, p);
 }
 
-void composeCityTitle(core::dsl::Ui& ui, float x, float y, float width, const CitySpec& city, const Palette& p) {
+void composeCityTitle(eui::Ui& ui, float x, float y, float width, const CitySpec& city, const Palette& p) {
     const bool favorite = isFavorite(state.selectedCity);
-    label(ui, "city.title", x, y, width * 0.56f, 64.0f, std::string(city.name) + ",", 58.0f, p.text, core::HorizontalAlign::Left, true);
-    label(ui, "city.country", x, y + 58.0f, width * 0.56f, 58.0f, city.country, 52.0f, p.text, core::HorizontalAlign::Left, true);
+    label(ui, "city.title", x, y, width * 0.56f, 64.0f, std::string(city.name) + ",", 58.0f, p.text, eui::HorizontalAlign::Left, true);
+    label(ui, "city.country", x, y + 58.0f, width * 0.56f, 58.0f, city.country, 52.0f, p.text, eui::HorizontalAlign::Left, true);
     label(ui, "city.note", x + width * 0.38f, y + 54.0f, width * 0.38f, 48.0f, quoteText(), 21.0f, p.muted);
 
     const float buttonW = 200.0f;
@@ -538,8 +535,8 @@ void composeCityTitle(core::dsl::Ui& ui, float x, float y, float width, const Ci
         .y(buttonY)
         .size(buttonW, buttonH)
         .states(favorite ? kClear : p.soft,
-                favorite ? kClear : core::mixColor(p.soft, p.strong, 0.08f),
-                favorite ? kClear : core::mixColor(p.soft, p.strong, 0.16f))
+                favorite ? kClear : eui::mixColor(p.soft, p.strong, 0.08f),
+                favorite ? kClear : eui::mixColor(p.soft, p.strong, 0.16f))
         .radius(19.0f)
         .border(favorite ? 0.0f : 1.0f, favorite ? kClear : alpha(p.strong, 0.22f))
         .disabled(favorite)
@@ -555,21 +552,21 @@ void composeCityTitle(core::dsl::Ui& ui, float x, float y, float width, const Ci
         .fontSize(18.0f)
         .lineHeight(20.0f)
         .color(favorite ? p.muted : p.text)
-        .horizontalAlign(core::HorizontalAlign::Center)
-        .verticalAlign(core::VerticalAlign::Center)
+        .horizontalAlign(eui::HorizontalAlign::Center)
+        .verticalAlign(eui::VerticalAlign::Center)
         .build();
 }
 
-void composeCityCard(core::dsl::Ui& ui, float x, float y, float width, float height, int cityIndex, const Palette& p) {
+void composeCityCard(eui::Ui& ui, float x, float y, float width, float height, int cityIndex, const Palette& p) {
     const CitySpec& city = kCities[static_cast<std::size_t>(cityIndex)];
     const bool selected = cityIndex == state.selectedCity;
     const std::tm tm = timeAtOffset(city.offsetMinutes);
     const bool day = tm.tm_hour >= 6 && tm.tm_hour < 18;
-    const core::Color bg = selected ? p.strong : p.surface;
-    const core::Color hover = selected ? core::mixColor(p.strong, p.surface, state.night ? 0.08f : 0.05f) : p.surfaceHover;
-    const core::Color pressed = selected ? core::mixColor(p.strong, color(0.0f, 0.0f, 0.0f, p.strong.a), 0.14f) : p.surfacePressed;
-    const core::Color mainText = selected ? p.strongText : p.text;
-    const core::Color subText = selected ? p.selectedMuted : p.muted;
+    const eui::Color bg = selected ? p.strong : p.surface;
+    const eui::Color hover = selected ? eui::mixColor(p.strong, p.surface, state.night ? 0.08f : 0.05f) : p.surfaceHover;
+    const eui::Color pressed = selected ? eui::mixColor(p.strong, color(0.0f, 0.0f, 0.0f, p.strong.a), 0.14f) : p.surfacePressed;
+    const eui::Color mainText = selected ? p.strongText : p.text;
+    const eui::Color subText = selected ? p.selectedMuted : p.muted;
     const std::string id = std::string("city.card.") + city.id;
     const float closeSize = 26.0f;
     const float closeX = width - closeSize - 8.0f;
@@ -580,7 +577,7 @@ void composeCityCard(core::dsl::Ui& ui, float x, float y, float width, float hei
         .y(y)
         .size(width, height)
         .visualStateFrom(id + ".bg", 0.975f)
-        .transition(0.14f, core::Ease::OutCubic)
+        .transition(0.14f, eui::Ease::OutCubic)
         .content([&] {
             ui.rect(id + ".bg")
                 .size(width, height)
@@ -592,11 +589,11 @@ void composeCityCard(core::dsl::Ui& ui, float x, float y, float width, float hei
                 })
                 .build();
 
-            label(ui, id + ".name", 20.0f, 16.0f, width - 110.0f, 28.0f, city.name, height < 112.0f ? 21.0f : 25.0f, mainText, core::HorizontalAlign::Left, true);
+            label(ui, id + ".name", 20.0f, 16.0f, width - 110.0f, 28.0f, city.name, height < 112.0f ? 21.0f : 25.0f, mainText, eui::HorizontalAlign::Left, true);
             label(ui, id + ".country", 20.0f, 43.0f, width - 110.0f, 24.0f, city.country, 15.0f, subText);
-            label(ui, id + ".utc", width - 132.0f, 17.0f, 80.0f, 28.0f, city.utcText, 16.0f, subText, core::HorizontalAlign::Right);
-            label(ui, id + ".time", 20.0f, height - 55.0f, width * 0.62f, 44.0f, formatTime(tm, false, state.use24Hour), height < 112.0f ? 32.0f : 40.0f, mainText, core::HorizontalAlign::Left, true);
-            label(ui, id + ".state", width - 86.0f, height - 45.0f, 64.0f, 28.0f, day ? "Day" : "Night", 16.0f, subText, core::HorizontalAlign::Right);
+            label(ui, id + ".utc", width - 132.0f, 17.0f, 80.0f, 28.0f, city.utcText, 16.0f, subText, eui::HorizontalAlign::Right);
+            label(ui, id + ".time", 20.0f, height - 55.0f, width * 0.62f, 44.0f, formatTime(tm, false, state.use24Hour), height < 112.0f ? 32.0f : 40.0f, mainText, eui::HorizontalAlign::Left, true);
+            label(ui, id + ".state", width - 86.0f, height - 45.0f, 64.0f, 28.0f, day ? "Day" : "Night", 16.0f, subText, eui::HorizontalAlign::Right);
 
             ui.rect(id + ".remove.hit")
                 .x(closeX)
@@ -617,15 +614,15 @@ void composeCityCard(core::dsl::Ui& ui, float x, float y, float width, float hei
                 .fontSize(12.0f)
                 .lineHeight(14.0f)
                 .color(subText)
-                .horizontalAlign(core::HorizontalAlign::Center)
-                .verticalAlign(core::VerticalAlign::Center)
+                .horizontalAlign(eui::HorizontalAlign::Center)
+                .verticalAlign(eui::VerticalAlign::Center)
                 .z(21)
                 .build();
         })
         .build();
 }
 
-void composeCards(core::dsl::Ui& ui, float x, float y, float width, const Palette& p) {
+void composeCards(eui::Ui& ui, float x, float y, float width, const Palette& p) {
     const int count = static_cast<int>(state.favorites.size());
     const int columns = width < 860.0f ? 2 : 4;
     const float gap = 12.0f;
@@ -659,7 +656,7 @@ const DslAppConfig& dslAppConfig() {
     return config;
 }
 
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
+void compose(eui::Ui& ui, const eui::Screen& screen) {
     normalizeFavorites();
     const Palette p = palette();
     const CitySpec& city = kCities[static_cast<std::size_t>(state.selectedCity)];

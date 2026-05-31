@@ -1,6 +1,4 @@
-#include "app/dsl_app.h"
-
-#include "core/dsl.h"
+#include "eui_neo.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -39,12 +37,12 @@ struct CalculatorState {
 
 std::vector<CalculatorState> history;
 
-constexpr core::Color kBg{0.07f, 0.075f, 0.085f, 1.0f};
-constexpr core::Color kButtonTop{0.20f, 0.215f, 0.225f, 1.0f};
-constexpr core::Color kButtonBottom{0.075f, 0.08f, 0.085f, 1.0f};
-constexpr core::Color kText{0.94f, 0.95f, 0.95f, 1.0f};
-constexpr core::Color kMuted{0.55f, 0.56f, 0.58f, 1.0f};
-constexpr core::Color kClear{0.0f, 0.0f, 0.0f, 0.0f};
+constexpr eui::Color kBg{0.07f, 0.075f, 0.085f, 1.0f};
+constexpr eui::Color kButtonTop{0.20f, 0.215f, 0.225f, 1.0f};
+constexpr eui::Color kButtonBottom{0.075f, 0.08f, 0.085f, 1.0f};
+constexpr eui::Color kText{0.94f, 0.95f, 0.95f, 1.0f};
+constexpr eui::Color kMuted{0.55f, 0.56f, 0.58f, 1.0f};
+constexpr eui::Color kClear{0.0f, 0.0f, 0.0f, 0.0f};
 
 std::string trimNumber(double value) {
     if (!std::isfinite(value)) {
@@ -124,13 +122,13 @@ std::string displayFormula(const std::string& text) {
     for (size_t i = 0; i < text.size(); ++i) {
         const char ch = text[i];
         if (ch == '*') {
-            out += core::dsl::utf8(0x00D7);
+            out += eui::utf8(0x00D7);
         } else if (ch == '/') {
-            out += core::dsl::utf8(0x00F7);
+            out += eui::utf8(0x00F7);
         } else if (ch == '-') {
-            out += core::dsl::utf8(0x2212);
+            out += eui::utf8(0x2212);
         } else if (ch == 'p' && text.compare(i, 2, "pi") == 0) {
-            out += core::dsl::utf8(0x03C0);
+            out += eui::utf8(0x03C0);
             ++i;
         } else if (text.compare(i, 6, "pow10(") == 0) {
             out += "10^(";
@@ -142,7 +140,7 @@ std::string displayFormula(const std::string& text) {
             out += "square(";
             i += 6;
         } else if (text.compare(i, 5, "sqrt(") == 0) {
-            out += core::dsl::utf8(0x221A);
+            out += eui::utf8(0x221A);
             out += "(";
             i += 4;
         } else {
@@ -642,19 +640,19 @@ unsigned int keyIcon(const std::string& key) {
 
 std::string keyLabel(const std::string& key) {
     if (key == "sqrt") {
-        return core::dsl::utf8(0x221A);
+        return eui::utf8(0x221A);
     }
     if (key == "pi") {
-        return core::dsl::utf8(0x03C0);
+        return eui::utf8(0x03C0);
     }
     if (key == "sub") {
-        return core::dsl::utf8(0x2212);
+        return eui::utf8(0x2212);
     }
     if (key == "mul") {
-        return core::dsl::utf8(0x00D7);
+        return eui::utf8(0x00D7);
     }
     if (key == "div") {
-        return core::dsl::utf8(0x00F7);
+        return eui::utf8(0x00F7);
     }
     return key;
 }
@@ -689,7 +687,7 @@ void press(const std::string& key) {
     } else if (key == "!") {
         factorialEntry();
     } else if (key == "pi") {
-        setConstant(core::dsl::utf8(0x03C0), kPi);
+        setConstant(eui::utf8(0x03C0), kPi);
     } else if (key == "e") {
         setConstant("e", std::exp(1.0));
     } else if (key == "rad") {
@@ -707,12 +705,12 @@ float displayFont(float width, const std::string& text) {
     return std::clamp(width / std::max(4.0f, static_cast<float>(text.size()) * 0.56f), 52.0f, 96.0f);
 }
 
-void key(core::dsl::Ui& ui, const std::string& id, const std::string& label,
+void key(eui::Ui& ui, const std::string& id, const std::string& label,
          float x, float y, float size, bool accent = false, bool active = false) {
-    const core::Color top = accent ? core::Color{0.78f, 0.86f, 0.82f, 1.0f} :
-                           active ? core::Color{0.23f, 0.30f, 0.29f, 1.0f} : kButtonTop;
-    const core::Color bottom = accent ? core::Color{0.58f, 0.72f, 0.66f, 1.0f} :
-                              active ? core::Color{0.10f, 0.17f, 0.16f, 1.0f} : kButtonBottom;
+    const eui::Color top = accent ? eui::Color{0.78f, 0.86f, 0.82f, 1.0f} :
+                           active ? eui::Color{0.23f, 0.30f, 0.29f, 1.0f} : kButtonTop;
+    const eui::Color bottom = accent ? eui::Color{0.58f, 0.72f, 0.66f, 1.0f} :
+                              active ? eui::Color{0.10f, 0.17f, 0.16f, 1.0f} : kButtonBottom;
     const unsigned int icon = keyIcon(label);
     const std::string shownLabel = keyLabel(label);
     const bool compactLabel = shownLabel == "AC" || shownLabel == "00" || shownLabel == "sin" ||
@@ -730,17 +728,17 @@ void key(core::dsl::Ui& ui, const std::string& id, const std::string& label,
                 .size(size, size)
                 .gradient(top, bottom)
                 .radius(size * 0.5f)
-                .border(1.0f, accent ? core::Color{0.74f, 0.88f, 0.80f, 0.55f} : core::Color{0.36f, 0.38f, 0.39f, 0.46f})
+                .border(1.0f, accent ? eui::Color{0.74f, 0.88f, 0.80f, 0.55f} : eui::Color{0.36f, 0.38f, 0.39f, 0.46f})
                 .build();
 
             auto text = ui.text(id + ".text")
                 .size(size, size)
                 .fontSize(icon != 0 ? size * 0.34f : (compactLabel ? size * 0.30f : size * 0.42f))
                 .lineHeight(size * 0.44f)
-                .color(accent ? core::Color{0.96f, 0.98f, 0.96f, 1.0f} :
-                       active ? core::Color{0.58f, 0.78f, 0.70f, 1.0f} : kText)
-                .horizontalAlign(core::HorizontalAlign::Center)
-                .verticalAlign(core::VerticalAlign::Center);
+                .color(accent ? eui::Color{0.96f, 0.98f, 0.96f, 1.0f} :
+                       active ? eui::Color{0.58f, 0.78f, 0.70f, 1.0f} : kText)
+                .horizontalAlign(eui::HorizontalAlign::Center)
+                .verticalAlign(eui::VerticalAlign::Center);
             if (icon != 0) {
                 text.icon(icon);
             } else {
@@ -750,7 +748,7 @@ void key(core::dsl::Ui& ui, const std::string& id, const std::string& label,
 
             ui.rect(id + ".hit")
                 .size(size, size)
-                .states(kClear, core::Color{1.0f, 1.0f, 1.0f, 0.04f}, core::Color{0.0f, 0.0f, 0.0f, 0.10f})
+                .states(kClear, eui::Color{1.0f, 1.0f, 1.0f, 0.04f}, eui::Color{0.0f, 0.0f, 0.0f, 0.10f})
                 .radius(size * 0.5f)
                 .onClick([label] { press(label); })
                 .build();
@@ -758,7 +756,7 @@ void key(core::dsl::Ui& ui, const std::string& id, const std::string& label,
         .build();
 }
 
-void roundToolButton(core::dsl::Ui& ui, const std::string& id, const std::string& label,
+void roundToolButton(eui::Ui& ui, const std::string& id, const std::string& label,
                      float x, float y, float size, bool active, std::function<void()> onClick,
                      unsigned int icon = 0) {
     ui.stack(id)
@@ -769,19 +767,19 @@ void roundToolButton(core::dsl::Ui& ui, const std::string& id, const std::string
         .content([&] {
             ui.rect(id + ".face")
                 .size(size, size)
-                .gradient(active ? core::Color{0.24f, 0.32f, 0.30f, 1.0f} : core::Color{0.17f, 0.18f, 0.19f, 1.0f},
-                          active ? core::Color{0.10f, 0.16f, 0.15f, 1.0f} : core::Color{0.07f, 0.075f, 0.08f, 1.0f})
+                .gradient(active ? eui::Color{0.24f, 0.32f, 0.30f, 1.0f} : eui::Color{0.17f, 0.18f, 0.19f, 1.0f},
+                          active ? eui::Color{0.10f, 0.16f, 0.15f, 1.0f} : eui::Color{0.07f, 0.075f, 0.08f, 1.0f})
                 .radius(size * 0.5f)
-                .border(1.0f, active ? core::Color{0.58f, 0.78f, 0.70f, 0.48f} : core::Color{0.36f, 0.38f, 0.39f, 0.40f})
+                .border(1.0f, active ? eui::Color{0.58f, 0.78f, 0.70f, 0.48f} : eui::Color{0.36f, 0.38f, 0.39f, 0.40f})
                 .build();
 
             auto text = ui.text(id + ".text")
                 .size(size, size)
                 .fontSize(icon != 0 ? size * 0.34f : size * 0.36f)
                 .lineHeight(size * 0.38f)
-                .color(active ? core::Color{0.68f, 0.86f, 0.78f, 1.0f} : kMuted)
-                .horizontalAlign(core::HorizontalAlign::Center)
-                .verticalAlign(core::VerticalAlign::Center);
+                .color(active ? eui::Color{0.68f, 0.86f, 0.78f, 1.0f} : kMuted)
+                .horizontalAlign(eui::HorizontalAlign::Center)
+                .verticalAlign(eui::VerticalAlign::Center);
             if (icon != 0) {
                 text.icon(icon);
             } else {
@@ -791,7 +789,7 @@ void roundToolButton(core::dsl::Ui& ui, const std::string& id, const std::string
 
             ui.rect(id + ".hit")
                 .size(size, size)
-                .states(kClear, core::Color{1.0f, 1.0f, 1.0f, 0.04f}, core::Color{0.0f, 0.0f, 0.0f, 0.10f})
+                .states(kClear, eui::Color{1.0f, 1.0f, 1.0f, 0.04f}, eui::Color{0.0f, 0.0f, 0.0f, 0.10f})
                 .radius(size * 0.5f)
                 .onClick(std::move(onClick))
                 .build();
@@ -811,7 +809,7 @@ const DslAppConfig& dslAppConfig() {
     return config;
 }
 
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
+void compose(eui::Ui& ui, const eui::Screen& screen) {
     const float margin = std::clamp(screen.width * 0.045f, 16.0f, 24.0f);
     const float w = std::max(260.0f, std::min(screen.width - margin * 2.0f, advancedMode ? 540.0f : 460.0f));
     const float h = std::max(520.0f, screen.height - margin * 2.0f);
@@ -831,7 +829,7 @@ void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
 
     ui.stack("root")
         .size(screen.width, screen.height)
-        .align(core::Align::CENTER, core::Align::CENTER)
+        .align(eui::Align::CENTER, eui::Align::CENTER)
         .content([&] {
             ui.stack("calc")
                 .size(w, h)
@@ -858,15 +856,15 @@ void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
                         .fontSize(advancedMode ? 26.0f : 34.0f)
                         .lineHeight(advancedMode ? 32.0f : 42.0f)
                         .color(kMuted)
-                        .horizontalAlign(core::HorizontalAlign::Right)
-                        .verticalAlign(core::VerticalAlign::Center)
+                        .horizontalAlign(eui::HorizontalAlign::Right)
+                        .verticalAlign(eui::VerticalAlign::Center)
                         .build();
 
                     ui.rect("cursor")
                         .x(w - 18.0f)
                         .y(exprY + 10.0f)
                         .size(2.0f, advancedMode ? 30.0f : 42.0f)
-                        .color(core::Color{0.68f, 0.86f, 0.80f, 0.78f})
+                        .color(eui::Color{0.68f, 0.86f, 0.80f, 0.78f})
                         .radius(1.0f)
                         .build();
 
@@ -877,9 +875,9 @@ void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
                         .text(shown)
                         .fontSize(std::min(displayFont(w - 32.0f, shown), advancedMode ? 72.0f : 96.0f))
                         .lineHeight(resultH)
-                        .color(core::Color{1.0f, 1.0f, 1.0f, 1.0f})
-                        .horizontalAlign(core::HorizontalAlign::Right)
-                        .verticalAlign(core::VerticalAlign::Center)
+                        .color(eui::Color{1.0f, 1.0f, 1.0f, 1.0f})
+                        .horizontalAlign(eui::HorizontalAlign::Right)
+                        .verticalAlign(eui::VerticalAlign::Center)
                         .build();
 
                     if (advancedMode) {

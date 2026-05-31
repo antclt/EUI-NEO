@@ -1,14 +1,10 @@
 #pragma once
 
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
-
 #include "core/dsl.h"
-#include "core/platform.h"
-#include "core/event.h"
-#include "core/image.h"
+#include "core/platform/platform.h"
+#include "core/platform/event.h"
+#include "core/render/image.h"
+#include "core/platform/window_backend.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -54,7 +50,7 @@ public:
         return true;
     }
 
-    bool initialize(GLFWwindow* window) {
+    bool initialize(core::window::Handle window) {
         installInputCallbacks(window);
         return true;
     }
@@ -83,7 +79,7 @@ public:
         logicalHeight_ = logicalHeight;
     }
 
-    bool update(GLFWwindow* window, float deltaSeconds, float pointerScale, float dpiScale, bool inputEnabled = true) {
+    bool update(core::window::Handle window, float deltaSeconds, float pointerScale, float dpiScale, bool inputEnabled = true) {
         PointerEvent event = readPointerEvent(window, pointerScale);
         const auto inputEvents = consumeInputEvents(window);
         KeyboardEvent keyboardEvent = inputEvents.first;
@@ -687,28 +683,28 @@ private:
                closeEnough(left.end, right.end);
     }
 
-    void applyCursor(GLFWwindow* window) {
+    void applyCursor(core::window::Handle window) {
         if (!arrowCursor_) {
-            arrowCursor_ = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+            arrowCursor_ = core::window::createStandardCursor(core::window::CursorType::Arrow);
         }
         if (!handCursor_) {
-            handCursor_ = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+            handCursor_ = core::window::createStandardCursor(core::window::CursorType::Hand);
         }
 
-        GLFWcursor* target = wantsHandCursor_ && handCursor_ ? handCursor_ : arrowCursor_;
+        core::window::CursorHandle target = wantsHandCursor_ && handCursor_ ? handCursor_ : arrowCursor_;
         if (target != currentCursor_) {
-            glfwSetCursor(window, target);
+            core::window::setCursor(window, target);
             currentCursor_ = target;
         }
     }
 
     void destroyCursors() {
         if (arrowCursor_) {
-            glfwDestroyCursor(arrowCursor_);
+            core::window::destroyCursor(arrowCursor_);
             arrowCursor_ = nullptr;
         }
         if (handCursor_) {
-            glfwDestroyCursor(handCursor_);
+            core::window::destroyCursor(handCursor_);
             handCursor_ = nullptr;
         }
         currentCursor_ = nullptr;
@@ -1276,7 +1272,7 @@ private:
         }
     }
 
-    void updateImeCursorRect(GLFWwindow* window, float dpiScale) {
+    void updateImeCursorRect(core::window::Handle window, float dpiScale) {
         if (window == nullptr) {
             imeCursorRectValid_ = false;
             return;
@@ -2317,10 +2313,10 @@ private:
     GLuint cacheTexture_ = 0;
     int cacheWidth_ = 0;
     int cacheHeight_ = 0;
-    GLFWcursor* arrowCursor_ = nullptr;
-    GLFWcursor* handCursor_ = nullptr;
-    GLFWcursor* currentCursor_ = nullptr;
-    GLFWwindow* imeCursorWindow_ = nullptr;
+    core::window::CursorHandle arrowCursor_ = nullptr;
+    core::window::CursorHandle handCursor_ = nullptr;
+    core::window::CursorHandle currentCursor_ = nullptr;
+    core::window::Handle imeCursorWindow_ = nullptr;
     Rect imeCursorRect_;
     bool imeCursorRectValid_ = false;
 };

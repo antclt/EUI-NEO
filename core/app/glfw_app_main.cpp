@@ -12,11 +12,13 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "app/app.h"
-#include "core/async.h"
-#include "core/dsl_runtime.h"
-#include "core/network.h"
-#include "core/platform.h"
+#include "eui/app.h"
+#include "core/app/app_runner.h"
+#include "core/app/dsl_window_manager.h"
+#include "core/app/dsl_window_runtime.h"
+#include "core/app/main_window_runtime.h"
+#include "core/platform/platform.h"
+#include "core/render/render_backend.h"
 
 #include <algorithm>
 #include <chrono>
@@ -25,30 +27,16 @@
 #include <thread>
 #include <vector>
 
-struct WindowState {
-    bool needsRender = true;
-    bool trayAvailable = false;
-    bool hiddenToTray = false;
+struct WindowState : app::AppRunner {
     bool hideToTrayRequested = false;
     bool forceClose = false;
     GLFWwindow* modalChildWindow = nullptr;
-    int renderedFrames = 0;
-    double lastTitleUpdate = 0.0;
-    double nextFrameTime = 0.0;
-    double frameInterval = 1.0 / 60.0;
-    double lastFrameRateLimit = 0.0;
-    double lastRefreshRateUpdate = 0.0;
 };
 
 struct ManagedWindow {
     GLFWwindow* window = nullptr;
     WindowState state;
-    core::dsl::Runtime runtime;
-    app::DslWindowRequest request;
-    bool composed = false;
-    float logicalWidth = 0.0f;
-    float logicalHeight = 0.0f;
-    double lastFrameTime = 0.0;
+    app::DslWindowRuntime content;
 };
 
 struct TimerResolutionGuard {
@@ -142,18 +130,7 @@ double getWindowRefreshRate(GLFWwindow* window) {
 }
 
 void updateFrameInterval(GLFWwindow* window, WindowState& windowState, double now, bool force = false) {
-    const double limit = app::frameRateLimit();
-    if (!force && limit == windowState.lastFrameRateLimit && now - windowState.lastRefreshRateUpdate < 0.5) {
-        return;
-    }
-
-    double refreshRate = std::clamp(getWindowRefreshRate(window), 30.0, 500.0);
-    if (limit > 0.0) {
-        refreshRate = std::min(refreshRate, limit);
-    }
-    windowState.frameInterval = 1.0 / std::max(1.0, refreshRate);
-    windowState.lastFrameRateLimit = limit;
-    windowState.lastRefreshRateUpdate = now;
+    windowState.updateFrameInterval(getWindowRefreshRate(window), now, force);
 }
 
 void waitForNextFrame(GLFWwindow* window, const WindowState& windowState) {
@@ -231,22 +208,20 @@ std::unique_ptr<ManagedWindow> createManagedWindow(const app::DslWindowRequest& 
 
     auto managed = std::make_unique<ManagedWindow>();
     managed->window = childWindow;
-    managed->request = request;
     managed->state.lastTitleUpdate = glfwGetTime();
     managed->state.nextFrameTime = managed->state.lastTitleUpdate;
-    managed->lastFrameTime = managed->state.lastTitleUpdate;
     installWindowCallbacks(childWindow, managed->state);
 
     glfwMakeContextCurrent(childWindow);
     glfwSwapInterval(0);
-    if (!managed->runtime.initialize(childWindow)) {
+    if (!managed->content.initialize(childWindow, request)) {
         core::releaseInputQueue(childWindow);
         glfwDestroyWindow(childWindow);
         return {};
     }
 
     managed->state.needsRender = true;
-    if (managed->request.modal) {
+    if (managed->content.request().modal) {
         glfwFocusWindow(childWindow);
     }
     return managed;
@@ -262,7 +237,7 @@ void destroyManagedWindow(std::unique_ptr<ManagedWindow>& managed) {
     GLFWwindow* windowToDestroy = managed->window;
     glfwMakeContextCurrent(windowToDestroy);
     core::releaseInputQueue(windowToDestroy);
-    managed->runtime.shutdown(false);
+    managed->content.shutdown(false);
     glfwDestroyWindow(windowToDestroy);
     if (previousContext != windowToDestroy) {
         glfwMakeContextCurrent(previousContext);
@@ -292,73 +267,40 @@ bool updateManagedWindow(ManagedWindow& managed, float deltaSeconds, bool extern
     const float logicalWidth = static_cast<float>(framebufferWidth) / dpiScale;
     const float logicalHeight = static_cast<float>(framebufferHeight) / dpiScale;
 
-    const auto composeFrame = [&] {
-        managed.runtime.compose(managed.request.pageId, logicalWidth, logicalHeight,
-            [&](core::dsl::Ui& ui, const core::dsl::Screen& screen) {
-                managed.request.compose(ui, screen);
-            });
-        managed.composed = true;
-        managed.logicalWidth = logicalWidth;
-        managed.logicalHeight = logicalHeight;
-    };
-
-    if (!managed.composed || managed.logicalWidth != logicalWidth || managed.logicalHeight != logicalHeight || externalReady) {
-        composeFrame();
-        managed.runtime.markFullRedraw();
+    if (managed.content.update(managed.window, deltaSeconds, logicalWidth, logicalHeight, pointerScale, dpiScale, externalReady)) {
         managed.state.needsRender = true;
     }
 
-    if (managed.runtime.update(managed.window, deltaSeconds, pointerScale, dpiScale)) {
-        managed.state.needsRender = true;
-    }
-
-    if (managed.state.needsRender) {
-        managed.runtime.render(framebufferWidth, framebufferHeight, dpiScale, managed.request.clearColor);
+    if (managed.state.needsRender || managed.content.needsRender()) {
+        managed.content.render(framebufferWidth, framebufferHeight, dpiScale);
         glfwSwapBuffers(managed.window);
         managed.state.needsRender = false;
         ++managed.state.renderedFrames;
     }
-
-    managed.lastFrameTime = glfwGetTime();
     return true;
 }
 
-void pruneClosedWindows(std::vector<std::unique_ptr<ManagedWindow>>& windows) {
-    windows.erase(std::remove_if(windows.begin(), windows.end(), [](std::unique_ptr<ManagedWindow>& managed) {
-        if (!managed) {
-            return true;
-        }
-        if (managed->window == nullptr || !glfwWindowShouldClose(managed->window)) {
-            return false;
-        }
-        destroyManagedWindow(managed);
-        return true;
-    }), windows.end());
+bool isManagedWindowClosed(const ManagedWindow& managed) {
+    return managed.window == nullptr || glfwWindowShouldClose(managed.window);
 }
 
-void createRequestedWindows(std::vector<std::unique_ptr<ManagedWindow>>& windows,
+void pruneClosedWindows(app::DslWindowManager<ManagedWindow>& windows) {
+    windows.pruneClosed(isManagedWindowClosed, destroyManagedWindow);
+}
+
+void createRequestedWindows(app::DslWindowManager<ManagedWindow>& windows,
                             GLFWwindow* shareWindow,
                             const std::vector<app::DslWindowRequest>& requests) {
     GLFWwindow* previousContext = glfwGetCurrentContext();
-    for (const app::DslWindowRequest& request : requests) {
-        if (!request.compose) {
-            continue;
-        }
-        if (std::unique_ptr<ManagedWindow> managed = createManagedWindow(request, shareWindow)) {
-            windows.push_back(std::move(managed));
-        }
-    }
+    windows.createPending(requests, [&](const app::DslWindowRequest& request) {
+        return createManagedWindow(request, shareWindow);
+    });
     glfwMakeContextCurrent(previousContext);
 }
 
-GLFWwindow* findModalChildWindow(const std::vector<std::unique_ptr<ManagedWindow>>& windows) {
-    for (auto it = windows.rbegin(); it != windows.rend(); ++it) {
-        const std::unique_ptr<ManagedWindow>& managed = *it;
-        if (managed && managed->request.modal && managed->window != nullptr && !glfwWindowShouldClose(managed->window)) {
-            return managed->window;
-        }
-    }
-    return nullptr;
+GLFWwindow* findModalChildWindow(app::DslWindowManager<ManagedWindow>& windows) {
+    ManagedWindow* managed = windows.modalWindow(isManagedWindowClosed);
+    return managed != nullptr ? managed->window : nullptr;
 }
 
 int main() {
@@ -388,8 +330,7 @@ int main() {
     glfwSwapInterval(0);
 
     WindowState windowState;
-    windowState.lastTitleUpdate = glfwGetTime();
-    windowState.nextFrameTime = windowState.lastTitleUpdate;
+    windowState.resetTiming(glfwGetTime());
     updateFrameInterval(window, windowState, windowState.lastTitleUpdate, true);
     if (app::showFrameCountInTitle()) {
         char title[128];
@@ -414,12 +355,15 @@ int main() {
         cleanupMainWindow();
         return -1;
     }
-    if (app::trayEnabled()) {
-        windowState.trayAvailable = core::platform::initializeTray({
-            app::trayTitle(),
-            app::trayIconPath()
+    core::render::OpenGLRenderBackend renderBackend(
+        [&] {
+            glfwMakeContextCurrent(window);
+        },
+        [&] {
+            glfwSwapBuffers(window);
         });
-    }
+    app::MainWindowRuntime mainWindowRuntime(windowState);
+    windowState.initializeTray();
     glfwSetWindowCloseCallback(window, [](GLFWwindow* currentWindow) {
         WindowState* state = static_cast<WindowState*>(glfwGetWindowUserPointer(currentWindow));
         if (state && state->modalChildWindow != nullptr && !glfwWindowShouldClose(state->modalChildWindow)) {
@@ -439,18 +383,17 @@ int main() {
         }
     });
 
-    double lastFrameTime = glfwGetTime();
-    std::vector<std::unique_ptr<ManagedWindow>> childWindows;
+    app::DslWindowManager<ManagedWindow> childWindows;
 
     while (!glfwWindowShouldClose(window)) {
         glfwMakeContextCurrent(window);
-        core::platform::pollTray(false);
-        if (core::platform::consumeTrayExitRequested()) {
+        windowState.pollTray(false);
+        if (windowState.consumeTrayExitRequested()) {
             windowState.forceClose = true;
             glfwSetWindowShouldClose(window, GLFW_TRUE);
             break;
         }
-        if (core::platform::consumeTrayShowRequested()) {
+        if (windowState.consumeTrayShowRequested()) {
             restoreWindowFromTray(window, windowState);
         }
         pruneClosedWindows(childWindows);
@@ -463,23 +406,15 @@ int main() {
         }
         if (windowState.hiddenToTray) {
             glfwWaitEventsTimeout(0.10);
-            lastFrameTime = glfwGetTime();
-            windowState.nextFrameTime = lastFrameTime;
+            windowState.resetTiming(glfwGetTime());
             continue;
         }
 
-        const bool mainAnimatingAtFrameStart = app::isAnimating();
-        const bool childAnimatingAtFrameStart = std::any_of(childWindows.begin(), childWindows.end(), [](const std::unique_ptr<ManagedWindow>& managed) {
-            return managed != nullptr && managed->runtime.isAnimating();
-        });
-        if (mainAnimatingAtFrameStart || childAnimatingAtFrameStart) {
+        if (windowState.anyAnimating(childWindows.anyAnimating())) {
             waitForNextFrame(window, windowState);
         }
 
         const double currentFrameTime = glfwGetTime();
-        updateFrameInterval(window, windowState, currentFrameTime);
-        const float deltaSeconds = static_cast<float>(currentFrameTime - lastFrameTime);
-        lastFrameTime = currentFrameTime;
 
         if (windowState.modalChildWindow == nullptr && glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             if (windowState.trayAvailable) {
@@ -494,75 +429,52 @@ int main() {
         int framebufferHeight = 0;
         glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
         if (framebufferWidth <= 0 || framebufferHeight <= 0) {
-            windowState.needsRender = true;
             glfwWaitEvents();
-            windowState.nextFrameTime = glfwGetTime();
-            lastFrameTime = windowState.nextFrameTime;
+            mainWindowRuntime.markUnavailableFrame(glfwGetTime());
             continue;
         }
 
         const float dpiScale = getDpiScale(window);
         const float pointerScale = getPointerScale(window);
-        const bool asyncReady = core::async::dispatchReady();
-        const bool externalReady = core::network::consumeAnyTextReady() || asyncReady;
         const bool mainInputEnabled = windowState.modalChildWindow == nullptr;
 
-        if (app::update(window, deltaSeconds, framebufferWidth, framebufferHeight, dpiScale, pointerScale, externalReady, mainInputEnabled)) {
-            windowState.needsRender = true;
-        }
+        mainWindowRuntime.runFrame(
+            window,
+            renderBackend,
+            {framebufferWidth, framebufferHeight, dpiScale, pointerScale},
+            currentFrameTime,
+            getWindowRefreshRate(window),
+            mainInputEnabled,
+            [&] {
+                createRequestedWindows(childWindows, window, app::consumeWindowRequests());
+                pruneClosedWindows(childWindows);
+                windowState.modalChildWindow = findModalChildWindow(childWindows);
+            },
+            [&](float frameDelta, bool frameExternalReady) {
+                childWindows.updateAll([&](ManagedWindow& managed) {
+                    updateManagedWindow(managed, frameDelta, frameExternalReady);
+                });
 
-        createRequestedWindows(childWindows, window, app::consumeWindowRequests());
-        pruneClosedWindows(childWindows);
-        windowState.modalChildWindow = findModalChildWindow(childWindows);
-
-        if (windowState.needsRender) {
-            app::render(framebufferWidth, framebufferHeight, dpiScale);
-            glfwSwapBuffers(window);
-            windowState.needsRender = false;
-            ++windowState.renderedFrames;
-        }
-
-        for (std::unique_ptr<ManagedWindow>& managed : childWindows) {
-            if (managed && updateManagedWindow(*managed, deltaSeconds, externalReady)) {
-                // child window rendered inside updateManagedWindow
-            }
-        }
-
-        createRequestedWindows(childWindows, window, app::consumeWindowRequests());
-        pruneClosedWindows(childWindows);
-        windowState.modalChildWindow = findModalChildWindow(childWindows);
-
-        if (app::showFrameCountInTitle()) {
-            const double titleElapsed = glfwGetTime() - windowState.lastTitleUpdate;
-            if (titleElapsed >= 1.0) {
-                const double fps = static_cast<double>(windowState.renderedFrames) / titleElapsed;
-                char title[128];
-                std::snprintf(title, sizeof(title), "%s - %.0f FPS", app::windowTitle(), fps);
+                createRequestedWindows(childWindows, window, app::consumeWindowRequests());
+                pruneClosedWindows(childWindows);
+                windowState.modalChildWindow = findModalChildWindow(childWindows);
+            },
+            [&](const char* title) {
                 glfwSetWindowTitle(window, title);
-                windowState.renderedFrames = 0;
-                windowState.lastTitleUpdate = glfwGetTime();
-            }
-        }
+            },
+            [&] {
+                return childWindows.anyAnimating();
+            });
 
-        const bool anyAnimating = app::isAnimating() || std::any_of(childWindows.begin(), childWindows.end(), [](const std::unique_ptr<ManagedWindow>& managed) {
-            return managed != nullptr && managed->runtime.isAnimating();
-        });
+        const bool anyAnimating = windowState.anyAnimating(childWindows.anyAnimating());
         if (anyAnimating) {
-            const double now = glfwGetTime();
-            windowState.nextFrameTime += windowState.frameInterval;
-            if (windowState.nextFrameTime <= now || windowState.nextFrameTime > now + windowState.frameInterval * 2.0) {
-                windowState.nextFrameTime = now + windowState.frameInterval;
-            }
             glfwPollEvents();
         } else {
             glfwWaitEvents();
-            windowState.nextFrameTime = glfwGetTime();
         }
     }
 
-    for (std::unique_ptr<ManagedWindow>& managed : childWindows) {
-        destroyManagedWindow(managed);
-    }
+    childWindows.destroyAll(destroyManagedWindow);
     core::releaseInputQueue(window);
     glfwMakeContextCurrent(window);
     core::platform::shutdownTray();

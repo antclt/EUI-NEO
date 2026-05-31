@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/primitive.h"
+#include "core/render/primitive.h"
 
 #include <memory>
 #include <cstdint>

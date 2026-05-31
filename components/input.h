@@ -833,10 +833,8 @@ private:
             return;
         }
         const auto range = selectionRange(state);
-        if (GLFWwindow* window = glfwGetCurrentContext()) {
-            const std::string selected = state.text.substr(static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
-            glfwSetClipboardString(window, selected.c_str());
-        }
+        const std::string selected = state.text.substr(static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
+        core::window::setClipboardText(selected);
     }
 
     static core::TextPrimitive::TextMetrics measureMetrics(const std::string& value, const std::string& fontFamily, float fontSize) {

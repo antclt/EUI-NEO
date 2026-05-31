@@ -1,6 +1,4 @@
-#include "app/dsl_app.h"
-
-#include "components/components.h"
+#include "eui_neo.h"
 
 #include <algorithm>
 #include <array>
@@ -41,37 +39,37 @@ struct SerialState {
 
 SerialState state;
 
-constexpr core::Color kBackground{0.930f, 0.945f, 0.940f, 1.0f};
-constexpr core::Color kSurface{0.990f, 0.992f, 0.988f, 1.0f};
-constexpr core::Color kSurfaceHover{0.900f, 0.928f, 0.920f, 1.0f};
-constexpr core::Color kSurfaceActive{0.830f, 0.875f, 0.865f, 1.0f};
-constexpr core::Color kInk{0.055f, 0.068f, 0.074f, 1.0f};
-constexpr core::Color kMuted{0.420f, 0.470f, 0.480f, 1.0f};
-constexpr core::Color kBorder{0.720f, 0.780f, 0.770f, 0.92f};
-constexpr core::Color kTeal{0.035f, 0.520f, 0.445f, 1.0f};
-constexpr core::Color kBlue{0.205f, 0.390f, 0.810f, 1.0f};
-constexpr core::Color kAmber{0.930f, 0.540f, 0.130f, 1.0f};
-constexpr core::Color kRose{0.810f, 0.235f, 0.345f, 1.0f};
-constexpr core::Color kClear{0.0f, 0.0f, 0.0f, 0.0f};
+constexpr eui::Color kBackground{0.930f, 0.945f, 0.940f, 1.0f};
+constexpr eui::Color kSurface{0.990f, 0.992f, 0.988f, 1.0f};
+constexpr eui::Color kSurfaceHover{0.900f, 0.928f, 0.920f, 1.0f};
+constexpr eui::Color kSurfaceActive{0.830f, 0.875f, 0.865f, 1.0f};
+constexpr eui::Color kInk{0.055f, 0.068f, 0.074f, 1.0f};
+constexpr eui::Color kMuted{0.420f, 0.470f, 0.480f, 1.0f};
+constexpr eui::Color kBorder{0.720f, 0.780f, 0.770f, 0.92f};
+constexpr eui::Color kTeal{0.035f, 0.520f, 0.445f, 1.0f};
+constexpr eui::Color kBlue{0.205f, 0.390f, 0.810f, 1.0f};
+constexpr eui::Color kAmber{0.930f, 0.540f, 0.130f, 1.0f};
+constexpr eui::Color kRose{0.810f, 0.235f, 0.345f, 1.0f};
+constexpr eui::Color kClear{0.0f, 0.0f, 0.0f, 0.0f};
 
 components::theme::ThemeColorTokens themeTokens() {
     return {kBackground, kTeal, kSurface, kSurfaceHover, kSurfaceActive, kInk, kBorder, false};
 }
 
-core::Transition transition() {
-    return core::Transition::make(0.16f, core::Ease::OutCubic);
+eui::Transition transition() {
+    return eui::Transition::make(0.16f, eui::Ease::OutCubic);
 }
 
-core::Transition chartTransition() {
-    return core::Transition::make(0.52f, core::Ease::InOutCubic);
+eui::Transition chartTransition() {
+    return eui::Transition::make(0.52f, eui::Ease::InOutCubic);
 }
 
-core::Color alpha(core::Color color, float value) {
+eui::Color alpha(eui::Color color, float value) {
     color.a = std::clamp(value, 0.0f, 1.0f);
     return color;
 }
 
-core::Color soft(core::Color color, float value) {
+eui::Color soft(eui::Color color, float value) {
     color.a = std::clamp(value, 0.0f, 1.0f);
     return color;
 }
@@ -318,7 +316,7 @@ std::vector<float> pieValues() {
     };
 }
 
-void label(core::dsl::Ui& ui,
+void label(eui::Ui& ui,
            const std::string& id,
            float x,
            float y,
@@ -326,8 +324,8 @@ void label(core::dsl::Ui& ui,
            float height,
            const std::string& value,
            float fontSize,
-           core::Color color,
-           core::HorizontalAlign align = core::HorizontalAlign::Left) {
+           eui::Color color,
+           eui::HorizontalAlign align = eui::HorizontalAlign::Left) {
     ui.text(id)
         .x(x)
         .y(y)
@@ -337,11 +335,11 @@ void label(core::dsl::Ui& ui,
         .lineHeight(fontSize + 5.0f)
         .color(color)
         .horizontalAlign(align)
-        .verticalAlign(core::VerticalAlign::Center)
+        .verticalAlign(eui::VerticalAlign::Center)
         .build();
 }
 
-void button(core::dsl::Ui& ui,
+void button(eui::Ui& ui,
             const std::string& id,
             float x,
             float y,
@@ -351,10 +349,10 @@ void button(core::dsl::Ui& ui,
             unsigned int icon,
             bool primary,
             std::function<void()> onClick) {
-    const core::Color base = primary ? kTeal : kSurfaceHover;
-    const core::Color hover = primary ? core::mixColor(kTeal, {1.0f, 1.0f, 1.0f, 1.0f}, 0.12f) : core::mixColor(kSurfaceHover, kTeal, 0.08f);
-    const core::Color pressed = primary ? core::mixColor(kTeal, {0.0f, 0.0f, 0.0f, 1.0f}, 0.12f) : kSurfaceActive;
-    const core::Color textColor = primary ? core::Color{0.98f, 1.0f, 0.99f, 1.0f} : kInk;
+    const eui::Color base = primary ? kTeal : kSurfaceHover;
+    const eui::Color hover = primary ? eui::mixColor(kTeal, {1.0f, 1.0f, 1.0f, 1.0f}, 0.12f) : eui::mixColor(kSurfaceHover, kTeal, 0.08f);
+    const eui::Color pressed = primary ? eui::mixColor(kTeal, {0.0f, 0.0f, 0.0f, 1.0f}, 0.12f) : kSurfaceActive;
+    const eui::Color textColor = primary ? eui::Color{0.98f, 1.0f, 0.99f, 1.0f} : kInk;
 
     ui.stack(id + ".wrap")
         .x(x)
@@ -380,7 +378,7 @@ void button(core::dsl::Ui& ui,
         .build();
 }
 
-void panel(core::dsl::Ui& ui, const std::string& id, float x, float y, float width, float height) {
+void panel(eui::Ui& ui, const std::string& id, float x, float y, float width, float height) {
     ui.rect(id)
         .x(x)
         .y(y)
@@ -391,7 +389,7 @@ void panel(core::dsl::Ui& ui, const std::string& id, float x, float y, float wid
         .build();
 }
 
-void composeHeader(core::dsl::Ui& ui, float x, float y, float width) {
+void composeHeader(eui::Ui& ui, float x, float y, float width) {
     const float statusW = 118.0f;
     const float statusX = x + width - 394.0f;
     label(ui, "header.title", x, y, 170.0f, 34.0f, "Serial Tool", 24.0f, kInk);
@@ -413,8 +411,8 @@ void composeHeader(core::dsl::Ui& ui, float x, float y, float width) {
         .fontSize(13.0f)
         .lineHeight(13.0f)
         .color(state.connected ? kTeal : kRose)
-        .horizontalAlign(core::HorizontalAlign::Center)
-        .verticalAlign(core::VerticalAlign::Center)
+        .horizontalAlign(eui::HorizontalAlign::Center)
+        .verticalAlign(eui::VerticalAlign::Center)
         .build();
 
     button(ui, "header.connect", x + width - 266.0f, y, 126.0f, 34.0f,
@@ -430,12 +428,12 @@ void composeHeader(core::dsl::Ui& ui, float x, float y, float width) {
     });
 }
 
-void composeMetricBar(core::dsl::Ui& ui, float x, float y, float width) {
+void composeMetricBar(eui::Ui& ui, float x, float y, float width) {
     const float h = 58.0f;
     const float cellW = width / 6.0f;
     panel(ui, "metrics.bg", x, y, width, h);
 
-    auto cell = [&](const std::string& id, int index, const std::string& name, const std::string& value, core::Color color) {
+    auto cell = [&](const std::string& id, int index, const std::string& name, const std::string& value, eui::Color color) {
         const float cx = x + static_cast<float>(index) * cellW;
         if (index > 0) {
             ui.rect(id + ".line")
@@ -464,12 +462,12 @@ void composeMetricBar(core::dsl::Ui& ui, float x, float y, float width) {
     cell("metric.hex.bytes", 5, "HEX Bytes", number(state.hexBytes), kRose);
 }
 
-void composeCharts(core::dsl::Ui& ui, float x, float y, float width) {
+void composeCharts(eui::Ui& ui, float x, float y, float width) {
     const float gap = 16.0f;
     const float h = 346.0f;
     const float sideW = std::clamp(width * 0.145f, 160.0f, 190.0f);
     const float lineW = std::max(320.0f, width - sideW * 2.0f - gap * 2.0f);
-    const std::vector<core::Color> colors{kTeal, kBlue, kAmber, kRose};
+    const std::vector<eui::Color> colors{kTeal, kBlue, kAmber, kRose};
 
     ui.stack("charts.line.wrap")
         .x(x)
@@ -522,7 +520,7 @@ void composeCharts(core::dsl::Ui& ui, float x, float y, float width) {
         .build();
 }
 
-void composeTransmit(core::dsl::Ui& ui, float x, float y, float width, float height) {
+void composeTransmit(eui::Ui& ui, float x, float y, float width, float height) {
     panel(ui, "tx.bg", x, y, width, height);
     label(ui, "tx.title", x + 14.0f, y + 10.0f, 86.0f, 28.0f, "Simulator", 15.0f, kInk);
 
@@ -600,7 +598,7 @@ void composeTransmit(core::dsl::Ui& ui, float x, float y, float width, float hei
     });
 }
 
-core::Color dirColor(const std::string& dir) {
+eui::Color dirColor(const std::string& dir) {
     if (dir == "TX") {
         return kTeal;
     }
@@ -613,7 +611,7 @@ core::Color dirColor(const std::string& dir) {
     return kMuted;
 }
 
-void composeLog(core::dsl::Ui& ui, float x, float y, float width, float height) {
+void composeLog(eui::Ui& ui, float x, float y, float width, float height) {
     panel(ui, "log.bg", x, y, width, height);
     label(ui, "log.title", x + 14.0f, y + 10.0f, width - 28.0f, 28.0f, "Traffic Data", 15.0f, kInk);
 
@@ -643,7 +641,7 @@ void composeLog(core::dsl::Ui& ui, float x, float y, float width, float height) 
     label(ui, "log.h.payload", tx + timeW + dirW + modeW + bytesW, ty, payloadW - 8.0f, hh, "Payload", 12.0f, kMuted);
 
     if (state.logs.empty()) {
-        label(ui, "log.empty", tx, ty + 54.0f, tw, 24.0f, "No traffic yet.", 13.0f, kMuted, core::HorizontalAlign::Center);
+        label(ui, "log.empty", tx, ty + 54.0f, tw, 24.0f, "No traffic yet.", 13.0f, kMuted, eui::HorizontalAlign::Center);
         return;
     }
 
@@ -680,7 +678,7 @@ const DslAppConfig& dslAppConfig() {
     return config;
 }
 
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
+void compose(eui::Ui& ui, const eui::Screen& screen) {
     const float margin = std::clamp(screen.width * 0.025f, 18.0f, 30.0f);
     const float contentW = std::max(720.0f, screen.width - margin * 2.0f);
     const float x = (screen.width - contentW) * 0.5f;

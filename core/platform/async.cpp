@@ -1,9 +1,5 @@
-#include "core/async.h"
-
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
+#include "core/platform/async.h"
+#include "core/platform/window_backend.h"
 
 #include <algorithm>
 #include <condition_variable>
@@ -71,7 +67,7 @@ void ensureWorkersLocked() {
 }
 
 void postReadyEvent() {
-    glfwPostEmptyEvent();
+    window::postEmptyEvent();
 }
 
 } // namespace

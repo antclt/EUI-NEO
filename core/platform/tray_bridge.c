@@ -1,4 +1,4 @@
-#include "core/tray_bridge.h"
+#include "core/platform/tray_bridge.h"
 
 #if defined(EUI_TRAY_WINAPI)
 #define TRAY_WINAPI 1

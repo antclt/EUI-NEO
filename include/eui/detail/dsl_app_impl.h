@@ -1,115 +1,30 @@
 #pragma once
 
-#include "app/app.h"
+#include "eui/dsl_app.h"
+#include "eui/network.h"
 
 #include <glad/glad.h>
 
 #include "3rd/stb_image.h"
-#include "core/async.h"
 #include "core/dsl_runtime.h"
-#include "core/network.h"
-#include "core/text.h"
+#include "core/render/text.h"
 
 #include <algorithm>
 #include <filesystem>
-#include <string>
-#include <utility>
 #include <vector>
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
+
 namespace app {
-
-namespace async {
-
-using core::async::CancelToken;
-using core::async::Result;
-using core::async::Status;
-using core::async::cancel;
-using core::async::failure;
-using core::async::restart;
-using core::async::runOnce;
-using core::async::running;
-using core::async::status;
-using core::async::success;
-
-} // namespace async
-
-struct DslAppConfig {
-    const char* titleValue = "App";
-    const char* pageIdValue = "app";
-    core::Color clearColorValue = {0.16f, 0.18f, 0.20f, 1.0f};
-    int windowWidthValue = 800;
-    int windowHeightValue = 600;
-    bool showFrameCountInTitleValue = false;
-    double fpsValue = 0.0;
-    const char* iconPathValue = "assets/icon.png";
-    const char* textFontFileValue = "";
-    const char* iconFontFileValue = "";
-    bool trayEnabledValue = false;
-    const char* trayTitleValue = "";
-    const char* trayIconPathValue = "";
-
-    DslAppConfig& title(const char* value) { titleValue = value; return *this; }
-    DslAppConfig& pageId(const char* value) { pageIdValue = value; return *this; }
-    DslAppConfig& clearColor(const core::Color& value) { clearColorValue = value; return *this; }
-    DslAppConfig& background(const core::Color& value) { return clearColor(value); }
-    DslAppConfig& windowSize(int width, int height) {
-        windowWidthValue = width;
-        windowHeightValue = height;
-        return *this;
-    }
-    DslAppConfig& windowWidth(int value) { windowWidthValue = value; return *this; }
-    DslAppConfig& windowHeight(int value) { windowHeightValue = value; return *this; }
-    DslAppConfig& showFrameCountInTitle(bool value = true) {
-        showFrameCountInTitleValue = value;
-        return *this;
-    }
-    DslAppConfig& fps(double value) { fpsValue = value; return *this; }
-    DslAppConfig& iconPath(const char* value) { iconPathValue = value; return *this; }
-    DslAppConfig& textFont(const char* value) { textFontFileValue = value; return *this; }
-    DslAppConfig& iconFont(const char* value) { iconFontFileValue = value; return *this; }
-    DslAppConfig& fonts(const char* textFont, const char* iconFont = "") {
-        textFontFileValue = textFont;
-        iconFontFileValue = iconFont;
-        return *this;
-    }
-    DslAppConfig& tray(bool value = true) {
-        trayEnabledValue = value;
-        return *this;
-    }
-    DslAppConfig& trayTitle(const char* value) {
-        trayTitleValue = value;
-        return *this;
-    }
-    DslAppConfig& trayIcon(const char* value) {
-        trayIconPathValue = value;
-        return *this;
-    }
-};
-
-struct DslWindowConfig {
-    std::string titleValue = "Window";
-    std::string pageIdValue = "window";
-    core::Color clearColorValue = {0.16f, 0.18f, 0.20f, 1.0f};
-    int windowWidthValue = 640;
-    int windowHeightValue = 420;
-    bool modalValue = false;
-
-    DslWindowConfig& title(std::string value) { titleValue = std::move(value); return *this; }
-    DslWindowConfig& pageId(std::string value) { pageIdValue = std::move(value); return *this; }
-    DslWindowConfig& clearColor(const core::Color& value) { clearColorValue = value; return *this; }
-    DslWindowConfig& background(const core::Color& value) { return clearColor(value); }
-    DslWindowConfig& windowSize(int width, int height) {
-        windowWidthValue = width;
-        windowHeightValue = height;
-        return *this;
-    }
-    DslWindowConfig& windowWidth(int value) { windowWidthValue = value; return *this; }
-    DslWindowConfig& windowHeight(int value) { windowHeightValue = value; return *this; }
-    DslWindowConfig& modal(bool value = true) { modalValue = value; return *this; }
-};
-
-const DslAppConfig& dslAppConfig();
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen);
 
 namespace detail {
 
@@ -151,6 +66,32 @@ inline std::string resolveIconPath(const char* iconPath) {
         candidates.push_back(current / "assets" / requested.filename());
     }
 
+    fs::path executableDir;
+#if defined(__APPLE__)
+    char executablePath[4096];
+    uint32_t executablePathSize = sizeof(executablePath);
+    if (_NSGetExecutablePath(executablePath, &executablePathSize) == 0) {
+        executableDir = fs::absolute(fs::path(executablePath), error).parent_path();
+    }
+#elif defined(_WIN32)
+    char executablePath[MAX_PATH];
+    const DWORD executablePathSize = GetModuleFileNameA(nullptr, executablePath, MAX_PATH);
+    if (executablePathSize > 0 && executablePathSize < MAX_PATH) {
+        executableDir = fs::absolute(fs::path(executablePath), error).parent_path();
+    }
+#elif defined(__linux__)
+    char executablePath[4096];
+    const ssize_t executablePathSize = readlink("/proc/self/exe", executablePath, sizeof(executablePath) - 1);
+    if (executablePathSize > 0) {
+        executablePath[executablePathSize] = '\0';
+        executableDir = fs::absolute(fs::path(executablePath), error).parent_path();
+    }
+#endif
+    if (!executableDir.empty()) {
+        candidates.push_back(executableDir / requested);
+        candidates.push_back(executableDir / "assets" / requested.filename());
+    }
+
     for (const fs::path& candidate : candidates) {
         error.clear();
         if (fs::exists(candidate, error) && !error) {
@@ -160,7 +101,7 @@ inline std::string resolveIconPath(const char* iconPath) {
     return {};
 }
 
-inline void applyWindowIcon(GLFWwindow* window) {
+inline void applyWindowIcon(core::window::Handle window) {
     if (window == nullptr) {
         return;
     }
@@ -182,11 +123,7 @@ inline void applyWindowIcon(GLFWwindow* window) {
         return;
     }
 
-    GLFWimage image{};
-    image.width = width;
-    image.height = height;
-    image.pixels = pixels;
-    glfwSetWindowIcon(window, 1, &image);
+    core::window::setWindowIcon(window, width, height, pixels);
     stbi_image_free(pixels);
 }
 
@@ -206,7 +143,7 @@ void openWindow(const DslWindowConfig& config, DslWindowCompose composeFn) {
     request.modal = config.modalValue;
     request.compose = std::move(composeFn);
     detail::dslWindowRequests().push_back(std::move(request));
-    glfwPostEmptyEvent();
+    core::window::postEmptyEvent();
 }
 
 void openWindow(const char* title, int width, int height, DslWindowCompose composeFn) {
@@ -261,7 +198,7 @@ const char* trayIconPath() {
         : config.iconPathValue;
 }
 
-bool initialize(GLFWwindow* window) {
+bool initialize(core::window::Handle window) {
     const DslAppConfig& config = dslAppConfig();
     core::TextPrimitive::setDefaultFontFiles(
         config.textFontFileValue != nullptr ? config.textFontFileValue : "",
@@ -275,16 +212,16 @@ bool initialize(GLFWwindow* window) {
     return detail::dslRuntime().initialize(window);
 }
 
-bool update(GLFWwindow* window, float deltaSeconds, int windowWidth, int windowHeight, float dpiScale, float pointerScale) {
+bool update(core::window::Handle window, float deltaSeconds, int windowWidth, int windowHeight, float dpiScale, float pointerScale) {
     const bool asyncReady = core::async::dispatchReady();
-    return update(window, deltaSeconds, windowWidth, windowHeight, dpiScale, pointerScale, core::network::consumeAnyTextReady() || asyncReady);
+    return update(window, deltaSeconds, windowWidth, windowHeight, dpiScale, pointerScale, eui::network::consumeAnyTextReady() || asyncReady);
 }
 
-bool update(GLFWwindow* window, float deltaSeconds, int windowWidth, int windowHeight, float dpiScale, float pointerScale, bool externalReady) {
+bool update(core::window::Handle window, float deltaSeconds, int windowWidth, int windowHeight, float dpiScale, float pointerScale, bool externalReady) {
     return update(window, deltaSeconds, windowWidth, windowHeight, dpiScale, pointerScale, externalReady, true);
 }
 
-bool update(GLFWwindow* window, float deltaSeconds, int windowWidth, int windowHeight, float dpiScale, float pointerScale, bool externalReady, bool inputEnabled) {
+bool update(core::window::Handle window, float deltaSeconds, int windowWidth, int windowHeight, float dpiScale, float pointerScale, bool externalReady, bool inputEnabled) {
     if (windowWidth <= 0 || windowHeight <= 0 || dpiScale <= 0.0f) {
         return false;
     }
@@ -344,7 +281,7 @@ void releaseGraphicsResources() {
 void shutdown() {
     core::async::shutdown();
     detail::dslRuntime().shutdown();
-    core::network::shutdown();
+    eui::network::shutdown();
 }
 
 } // namespace app

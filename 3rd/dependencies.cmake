@@ -130,6 +130,45 @@ else()
     FetchContent_MakeAvailable(glfw)
 endif()
 
+if(EUI_WINDOW_BACKEND STREQUAL "sdl2")
+    if(EUI_DEPS_MODE STREQUAL "bundled")
+        message(FATAL_ERROR
+            "SDL2 is not vendored under 3rd/. Use -DEUI_DEPS_MODE=auto with a system SDL2 package, "
+            "or -DEUI_DEPS_MODE=fetch to download SDL2 when building with -DEUI_WINDOW_BACKEND=sdl2."
+        )
+    endif()
+
+    if(EUI_DEPS_MODE STREQUAL "auto")
+        find_package(SDL2 CONFIG QUIET)
+        if(NOT TARGET SDL2::SDL2)
+            message(FATAL_ERROR
+                "System SDL2 package was not found. Install SDL2 development files, or configure with "
+                "-DEUI_WINDOW_BACKEND=sdl2 -DEUI_DEPS_MODE=fetch to download SDL2."
+            )
+        endif()
+    endif()
+
+    if(EUI_DEPS_MODE STREQUAL "fetch")
+        set(SDL_SHARED OFF CACHE BOOL "Build a shared version of SDL2" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "Build a static version of SDL2" FORCE)
+        set(SDL_TEST OFF CACHE BOOL "Build the SDL2_test library" FORCE)
+        set(SDL_TESTS OFF CACHE BOOL "Build the SDL2 test programs" FORCE)
+        set(SDL2_DISABLE_INSTALL ON CACHE BOOL "Disable installation of SDL2" FORCE)
+        set(SDL2_DISABLE_UNINSTALL ON CACHE BOOL "Disable uninstallation of SDL2" FORCE)
+
+        FetchContent_Declare(
+            sdl2
+            URL https://www.libsdl.org/release/SDL2-2.32.10.tar.gz
+            URL_HASH SHA256=5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            TIMEOUT 30
+        )
+        FetchContent_MakeAvailable(sdl2)
+        eui_silence_third_party_warnings(SDL2)
+        eui_silence_third_party_warnings(SDL2-static)
+    endif()
+endif()
+
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 eui_use_bundled_dependency(
     EUI_USE_BUNDLED_GLAD

@@ -1,9 +1,4 @@
-#include "app/dsl_app.h"
-
-#include "components/components.h"
-#include "core/image.h"
-#include "core/network.h"
-#include "core/platform.h"
+#include "eui_neo.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -15,7 +10,7 @@ namespace app {
 
 namespace {
 
-constexpr core::Color kTransparent{0.0f, 0.0f, 0.0f, 0.0f};
+constexpr eui::Color kTransparent{0.0f, 0.0f, 0.0f, 0.0f};
 
 int selectedPage = 0;
 bool optionDense = false;
@@ -50,7 +45,7 @@ int sampleMonth = 4;
 int sampleDay = 28;
 int sampleHour = 9;
 int sampleMinute = 30;
-core::Color sampleColor = components::theme::defaultPrimary();
+eui::Color sampleColor = components::theme::defaultPrimary();
 bool sampleDateOpen = false;
 bool sampleTimeOpen = false;
 bool sampleColorOpen = false;
@@ -68,26 +63,26 @@ constexpr float kNavTop = 128.0f;
 constexpr float kNavHeight = 50.0f;
 constexpr float kNavGap = 14.0f;
 
-core::Transition pageTransition() {
+eui::Transition pageTransition() {
     if (!optionMotion) {
-        return core::Transition::none();
+        return eui::Transition::none();
     }
-    return core::Transition::make(0.28f, core::Ease::OutCubic);
+    return eui::Transition::make(0.28f, eui::Ease::OutCubic);
 }
 
-core::Transition textTransition() {
-    core::Transition transition = pageTransition();
+eui::Transition textTransition() {
+    eui::Transition transition = pageTransition();
     if (transition.enabled) {
-        transition.animate(core::AnimProperty::TextColor | core::AnimProperty::Opacity);
+        transition.animate(eui::AnimProperty::TextColor | eui::AnimProperty::Opacity);
     }
     return transition;
 }
 
-core::Transition motionTransition() {
+eui::Transition motionTransition() {
     if (!optionMotion) {
-        return core::Transition::none();
+        return eui::Transition::none();
     }
-    return core::Transition::make(0.42f, core::Ease::OutBack);
+    return eui::Transition::make(0.42f, eui::Ease::OutBack);
 }
 
 double galleryFrameRateLimit() {
@@ -104,61 +99,61 @@ components::theme::PageVisualTokens pageVisuals() {
     return components::theme::pageVisuals(themeColors());
 }
 
-core::Color withAlpha(core::Color color, float alpha) {
+eui::Color withAlpha(eui::Color color, float alpha) {
     return components::theme::withAlpha(color, alpha);
 }
 
-core::Color mixTheme(core::Color from, core::Color to, float amount) {
-    return core::mixColor(from, to, amount);
+eui::Color mixTheme(eui::Color from, eui::Color to, float amount) {
+    return eui::mixColor(from, to, amount);
 }
 
-core::Color appBg() {
+eui::Color appBg() {
     return themeColors().background;
 }
 
-core::Color surface() {
+eui::Color surface() {
     return themeColors().surface;
 }
 
-core::Color surfaceSoft() {
+eui::Color surfaceSoft() {
     return themeColors().surfaceHover;
 }
 
-core::Color surfaceActive() {
+eui::Color surfaceActive() {
     return themeColors().surfaceActive;
 }
 
-core::Color textPrimary() {
+eui::Color textPrimary() {
     return pageVisuals().titleColor;
 }
 
-core::Color textMuted() {
+eui::Color textMuted() {
     return pageVisuals().subtitleColor;
 }
 
-core::Color bodyText() {
+eui::Color bodyText() {
     return pageVisuals().bodyColor;
 }
 
-core::Color borderColor(float alpha = 1.0f) {
+eui::Color borderColor(float alpha = 1.0f) {
     return components::theme::withOpacity(themeColors().border, alpha);
 }
 
-core::Color shadowColor(float darkAlpha = 0.28f, float lightAlpha = 0.12f) {
+eui::Color shadowColor(float darkAlpha = 0.28f, float lightAlpha = 0.12f) {
     return optionNight
-        ? core::Color{0.0f, 0.0f, 0.0f, darkAlpha}
-        : core::Color{0.10f, 0.14f, 0.22f, lightAlpha};
+        ? eui::Color{0.0f, 0.0f, 0.0f, darkAlpha}
+        : eui::Color{0.10f, 0.14f, 0.22f, lightAlpha};
 }
 
-core::Color buttonHover(const core::Color& base) {
-    return mixTheme(base, optionNight ? core::Color{1.0f, 1.0f, 1.0f, base.a} : themeColors().primary, optionNight ? 0.16f : 0.10f);
+eui::Color buttonHover(const eui::Color& base) {
+    return mixTheme(base, optionNight ? eui::Color{1.0f, 1.0f, 1.0f, base.a} : themeColors().primary, optionNight ? 0.16f : 0.10f);
 }
 
-core::Color buttonPressed(const core::Color& base) {
-    return mixTheme(base, optionNight ? core::Color{0.0f, 0.0f, 0.0f, base.a} : themeColors().surfaceActive, optionNight ? 0.34f : 0.22f);
+eui::Color buttonPressed(const eui::Color& base) {
+    return mixTheme(base, optionNight ? eui::Color{0.0f, 0.0f, 0.0f, base.a} : themeColors().surfaceActive, optionNight ? 0.34f : 0.22f);
 }
 
-core::Color accent() {
+eui::Color accent() {
     return themeColors().primary;
 }
 
@@ -210,7 +205,7 @@ const char* pageSubtitle() {
     return "Basic controls, states and visual properties in one surface.";
 }
 
-void caption(core::dsl::Ui& ui, const std::string& id, const std::string& text, float width, float y) {
+void caption(eui::Ui& ui, const std::string& id, const std::string& text, float width, float y) {
     ui.text(id)
         .y(y)
         .size(width, 24.0f)
@@ -218,16 +213,16 @@ void caption(core::dsl::Ui& ui, const std::string& id, const std::string& text, 
         .fontSize(16.0f)
         .lineHeight(22.0f)
         .color(textMuted())
-        .horizontalAlign(core::HorizontalAlign::Center)
+        .horizontalAlign(eui::HorizontalAlign::Center)
         .build();
 }
 
-void navItem(core::dsl::Ui& ui, const std::string& id, const std::string& label, unsigned int icon, int page) {
+void navItem(eui::Ui& ui, const std::string& id, const std::string& label, unsigned int icon, int page) {
     const bool active = selectedPage == page;
-    const core::Color activeAccent = accent();
-    const core::Color normal = active ? activeAccent : surface();
-    const core::Color hover = active ? buttonHover(activeAccent) : surfaceSoft();
-    const core::Color pressed = active ? buttonPressed(activeAccent) : surfaceActive();
+    const eui::Color activeAccent = accent();
+    const eui::Color normal = active ? activeAccent : surface();
+    const eui::Color hover = active ? buttonHover(activeAccent) : surfaceSoft();
+    const eui::Color pressed = active ? buttonPressed(activeAccent) : surfaceActive();
     components::button(ui, id)
         .size(212.0f, 50.0f)
         .icon(icon)
@@ -235,8 +230,8 @@ void navItem(core::dsl::Ui& ui, const std::string& id, const std::string& label,
         .fontSize(17.0f)
         .text(label)
         .colors(normal, hover, pressed)
-        .textColor(active || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-        .iconColor(active || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+        .textColor(active || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+        .iconColor(active || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
         .radius(12.0f)
         .border(1.0f, active ? withAlpha(activeAccent, 0.58f) : borderColor(0.60f))
         .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
@@ -247,8 +242,8 @@ void navItem(core::dsl::Ui& ui, const std::string& id, const std::string& label,
         .build();
 }
 
-void composeSidebar(core::dsl::Ui& ui, float height) {
-    const core::Color sidebarBg = optionNight ? mixTheme(appBg(), core::Color{0.0f, 0.0f, 0.0f, 1.0f}, 0.24f) : surface();
+void composeSidebar(eui::Ui& ui, float height) {
+    const eui::Color sidebarBg = optionNight ? mixTheme(appBg(), eui::Color{0.0f, 0.0f, 0.0f, 1.0f}, 0.24f) : surface();
     ui.stack("sidebar")
         .size(kSidebarWidth, height)
         .content([&] {
@@ -265,14 +260,14 @@ void composeSidebar(core::dsl::Ui& ui, float height) {
                 .radius(2.0f)
                 .translateY(static_cast<float>(navOrderForPage(selectedPage)) * (kNavHeight + kNavGap))
                 .transition(pageTransition())
-                .animate(core::AnimProperty::Transform | core::AnimProperty::Color)
+                .animate(eui::AnimProperty::Transform | eui::AnimProperty::Color)
                 .build();
 
             ui.column("sidebar.content")
                 .size(kSidebarWidth, std::max(0.0f, height - 42.0f))
                 .margin(0.0f, 30.0f, 0.0f, 0.0f)
                 .gap(14.0f)
-                .alignItems(core::Align::CENTER)
+                .alignItems(eui::Align::CENTER)
                 .content([&] {
                     ui.text("brand.icon")
                         .size(212.0f, 34.0f)
@@ -281,7 +276,7 @@ void composeSidebar(core::dsl::Ui& ui, float height) {
                         .lineHeight(32.0f)
                         .color(accent())
                         .transition(textTransition())
-                        .horizontalAlign(core::HorizontalAlign::Center)
+                        .horizontalAlign(eui::HorizontalAlign::Center)
                         .build();
 
                     ui.text("brand.title")
@@ -290,7 +285,7 @@ void composeSidebar(core::dsl::Ui& ui, float height) {
                         .fontSize(30.0f)
                         .lineHeight(34.0f)
                         .color(textPrimary())
-                        .horizontalAlign(core::HorizontalAlign::Center)
+                        .horizontalAlign(eui::HorizontalAlign::Center)
                         .build();
 
                     navItem(ui, "nav.controls", "Controls", 0xF1B2, 0);
@@ -328,8 +323,8 @@ void composeSidebar(core::dsl::Ui& ui, float height) {
         });
 }
 
-void propertyCard(core::dsl::Ui& ui, const std::string& id, const std::string& title, const std::string& note,
-                  const core::Color& color, const std::string& kind, float width) {
+void propertyCard(eui::Ui& ui, const std::string& id, const std::string& title, const std::string& note,
+                  const eui::Color& color, const std::string& kind, float width) {
     ui.stack(id)
         .size(width, 144.0f)
         .visualStateFrom(id + ".bg", 0.95f)
@@ -386,7 +381,7 @@ void propertyCard(core::dsl::Ui& ui, const std::string& id, const std::string& t
                 .fontSize(22.0f)
                 .lineHeight(28.0f)
                 .color(textPrimary())
-                .horizontalAlign(core::HorizontalAlign::Center)
+                .horizontalAlign(eui::HorizontalAlign::Center)
                 .build();
 
             caption(ui, id + ".note", note, width, 90.0f);
@@ -394,11 +389,11 @@ void propertyCard(core::dsl::Ui& ui, const std::string& id, const std::string& t
         .build();
 }
 
-void bingImageCard(core::dsl::Ui& ui, const std::string& id, const std::string& title, int index, const std::string& market,
+void bingImageCard(eui::Ui& ui, const std::string& id, const std::string& title, int index, const std::string& market,
                    float width, float height = 122.0f, float imageHeight = 72.0f) {
     const float labelY = std::max(14.0f, height - 30.0f);
     const std::string imageSource = "bing://daily?idx=" + std::to_string(std::max(0, index)) + "&mkt=" + market;
-    const bool imageReady = core::ImagePrimitive::isSourceReady(imageSource);
+    const bool imageReady = eui::ImagePrimitive::isSourceReady(imageSource);
     ui.stack(id)
         .size(width, height)
         .content([&] {
@@ -438,7 +433,7 @@ void bingImageCard(core::dsl::Ui& ui, const std::string& id, const std::string& 
                 .fontSize(16.0f)
                 .lineHeight(20.0f)
                 .color(textMuted())
-                .horizontalAlign(core::HorizontalAlign::Center)
+                .horizontalAlign(eui::HorizontalAlign::Center)
                 .build();
         })
         .build();
@@ -474,8 +469,8 @@ std::string jsonStringValue(const std::string& json, const std::string& key) {
 
 std::string bingApiText() {
     const std::string key = "gallery.bing.text";
-    core::network::requestText(key, "https://www.bing.com/HPImageArchive.aspx?format=js&n=1&idx=0&mkt=zh-CN");
-    const core::network::TextResult result = core::network::textResult(key);
+    eui::network::requestText(key, "https://www.bing.com/HPImageArchive.aspx?format=js&n=1&idx=0&mkt=zh-CN");
+    const eui::network::TextResult result = eui::network::textResult(key);
     if (!result.ready) {
         return "Loading Bing API text...";
     }
@@ -486,7 +481,7 @@ std::string bingApiText() {
     return copyright.empty() ? "Bing API returned text data." : copyright;
 }
 
-std::string colorHex(core::Color color);
+std::string colorHex(eui::Color color);
 
 std::string sampleDateText() {
     char buffer[16] = {};
@@ -500,7 +495,7 @@ std::string sampleTimeText() {
     return std::string(buffer);
 }
 
-void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
+void composeControlsPage(eui::Ui& ui, float width, float height) {
     const float cardGap = 18.0f;
     const float cardWidth = std::max(72.0f, std::min(204.0f, (width - cardGap * 2.0f) / 3.0f));
     const float rowHeight = 144.0f;
@@ -646,7 +641,7 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
         .theme(themeColors())
         .size(fieldWidth, 14.0f)
         .value(sampleSlider)
-        .transition(core::Transition::none())
+        .transition(eui::Transition::none())
         .build();
 
     components::slider(ui, "control.slider")
@@ -661,9 +656,9 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
 
     ui.column("controls.choice")
         .width(fieldWidth)
-        .height(core::SizeValue::wrapContent())
+        .height(eui::SizeValue::wrapContent())
         .gap(18.0f)
-        .alignItems(core::Align::CENTER)
+        .alignItems(eui::Align::CENTER)
         .content([&] {
             ui.row("controls.choice.row")
                 .size(choiceRowWidth, 42.0f)
@@ -700,8 +695,8 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                     ui.column("controls.stepper.dec")
                         .size(stepperWidth, 84.0f)
                         .gap(8.0f)
-                        .justifyContent(core::Align::CENTER)
-                        .alignItems(core::Align::CENTER)
+                        .justifyContent(eui::Align::CENTER)
+                        .alignItems(eui::Align::CENTER)
                         .content([&] {
                             ui.text("controls.stepper.dec.label")
                                 .width(stepperWidth)
@@ -710,8 +705,8 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                                 .fontSize(13.0f)
                                 .lineHeight(16.0f)
                                 .color(textMuted())
-                                .horizontalAlign(core::HorizontalAlign::Center)
-                                .verticalAlign(core::VerticalAlign::Center)
+                                .horizontalAlign(eui::HorizontalAlign::Center)
+                                .verticalAlign(eui::VerticalAlign::Center)
                                 .build();
 
                             components::stepper(ui, "control.stepper.dec")
@@ -736,8 +731,8 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                     ui.column("controls.stepper.hex")
                         .size(stepperWidth, 84.0f)
                         .gap(8.0f)
-                        .justifyContent(core::Align::CENTER)
-                        .alignItems(core::Align::CENTER)
+                        .justifyContent(eui::Align::CENTER)
+                        .alignItems(eui::Align::CENTER)
                         .content([&] {
                             ui.text("controls.stepper.hex.label")
                                 .width(stepperWidth)
@@ -746,8 +741,8 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                                 .fontSize(13.0f)
                                 .lineHeight(16.0f)
                                 .color(textMuted())
-                                .horizontalAlign(core::HorizontalAlign::Center)
-                                .verticalAlign(core::VerticalAlign::Center)
+                                .horizontalAlign(eui::HorizontalAlign::Center)
+                                .verticalAlign(eui::VerticalAlign::Center)
                                 .build();
 
                             components::stepper(ui, "control.stepper.hex")
@@ -769,8 +764,8 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                     ui.column("controls.stepper.bin")
                         .size(stepperWidth, 84.0f)
                         .gap(8.0f)
-                        .justifyContent(core::Align::CENTER)
-                        .alignItems(core::Align::CENTER)
+                        .justifyContent(eui::Align::CENTER)
+                        .alignItems(eui::Align::CENTER)
                         .content([&] {
                             ui.text("controls.stepper.bin.label")
                                 .width(stepperWidth)
@@ -779,8 +774,8 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                                 .fontSize(13.0f)
                                 .lineHeight(16.0f)
                                 .color(textMuted())
-                                .horizontalAlign(core::HorizontalAlign::Center)
-                                .verticalAlign(core::VerticalAlign::Center)
+                                .horizontalAlign(eui::HorizontalAlign::Center)
+                                .verticalAlign(eui::VerticalAlign::Center)
                                 .build();
 
                             components::stepper(ui, "control.stepper.bin")
@@ -860,7 +855,7 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                 .border(1.0f, borderColor(0.70f))
                 .shadow(10.0f, 0.0f, 3.0f, shadowColor(0.16f, 0.08f))
                 .transition(pageTransition())
-                .onContextMenu([](const core::PointerEvent& event, const core::Rect&) {
+                .onContextMenu([](const eui::PointerEvent& event, const eui::Rect&) {
                     sampleContextMenuOpen = true;
                     sampleContextMenuX = static_cast<float>(event.x);
                     sampleContextMenuY = static_cast<float>(event.y);
@@ -887,7 +882,7 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
                             .windowSize(640, 420)
                             .modal(true)
                             .clearColor(appBg()),
-                        [](core::dsl::Ui& ui, const core::dsl::Screen& screen) {
+                        [](eui::Ui& ui, const eui::Screen& screen) {
                             ui.stack("inspector.root")
                                 .size(screen.width, screen.height)
                                 .content([&] {
@@ -1117,7 +1112,7 @@ void composeControlsPage(core::dsl::Ui& ui, float width, float height) {
 
 }
 
-void textSample(core::dsl::Ui& ui, const std::string& id, const std::string& text, float size, float height, float width, const core::Color& color) {
+void textSample(eui::Ui& ui, const std::string& id, const std::string& text, float size, float height, float width, const eui::Color& color) {
     ui.text(id)
         .size(width, height)
         .text(text)
@@ -1128,7 +1123,7 @@ void textSample(core::dsl::Ui& ui, const std::string& id, const std::string& tex
         .build();
 }
 
-std::string colorHex(core::Color color) {
+std::string colorHex(eui::Color color) {
     const int r = static_cast<int>(std::clamp(color.r, 0.0f, 1.0f) * 255.0f + 0.5f);
     const int g = static_cast<int>(std::clamp(color.g, 0.0f, 1.0f) * 255.0f + 0.5f);
     const int b = static_cast<int>(std::clamp(color.b, 0.0f, 1.0f) * 255.0f + 0.5f);
@@ -1137,7 +1132,7 @@ std::string colorHex(core::Color color) {
     return result;
 }
 
-void themeSwatch(core::dsl::Ui& ui, const std::string& id, const std::string& name, const core::Color& color, float width) {
+void themeSwatch(eui::Ui& ui, const std::string& id, const std::string& name, const eui::Color& color, float width) {
     ui.stack(id)
         .size(width, 86.0f)
         .content([&] {
@@ -1165,7 +1160,7 @@ void themeSwatch(core::dsl::Ui& ui, const std::string& id, const std::string& na
                 .fontSize(14.0f)
                 .lineHeight(18.0f)
                 .color(textPrimary())
-                .horizontalAlign(core::HorizontalAlign::Center)
+                .horizontalAlign(eui::HorizontalAlign::Center)
                 .build();
 
             ui.text(id + ".value")
@@ -1176,13 +1171,13 @@ void themeSwatch(core::dsl::Ui& ui, const std::string& id, const std::string& na
                 .fontSize(12.0f)
                 .lineHeight(15.0f)
                 .color(textMuted())
-                .horizontalAlign(core::HorizontalAlign::Center)
+                .horizontalAlign(eui::HorizontalAlign::Center)
                 .build();
         })
         .build();
 }
 
-void composeStylePage(core::dsl::Ui& ui, float width, float height) {
+void composeStylePage(eui::Ui& ui, float width, float height) {
     const float textWidth = std::max(240.0f, std::min(width, 760.0f));
     const float iconGap = 20.0f;
     const float iconCardWidth = std::max(60.0f, std::min(120.0f, (width - iconGap * 3.0f) / 4.0f));
@@ -1219,7 +1214,7 @@ void composeStylePage(core::dsl::Ui& ui, float width, float height) {
                                     .fontSize(28.0f)
                                     .lineHeight(34.0f)
                                     .color(accent())
-                                    .horizontalAlign(core::HorizontalAlign::Center)
+                                    .horizontalAlign(eui::HorizontalAlign::Center)
                                     .transition(textTransition())
                                     .build();
 
@@ -1277,7 +1272,7 @@ void composeStylePage(core::dsl::Ui& ui, float width, float height) {
         });
 }
 
-void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
+void composeAnimationPage(eui::Ui& ui, float width, float height) {
     (void)height;
     const float stageWidth = std::max(280.0f, std::min(width, 860.0f));
     const float stageHeight = 252.0f;
@@ -1289,25 +1284,25 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
     const float actorTravel = std::max(0.0f, stageWidth - actorWidth * actorScale - 180.0f - actorBaseX);
     const float buttonWidth = std::max(92.0f, std::min(166.0f, (stageWidth - 36.0f) / 3.0f));
     const float buttonRowWidth = buttonWidth * 3.0f + 36.0f;
-    const core::Color rotateColor{0.84f, 0.46f, 0.60f, 1.0f};
-    const core::Color fadeColor{0.50f, 0.72f, 0.34f, 1.0f};
-    const core::Color scaleColor{0.92f, 0.62f, 0.26f, 1.0f};
-    const core::Color radiusColor{0.50f, 0.58f, 0.94f, 1.0f};
-    const core::Color glowColor{0.28f, 0.76f, 0.72f, 1.0f};
-    const core::Color flipXColor{0.74f, 0.46f, 0.92f, 1.0f};
-    const core::Color flipYColor{0.34f, 0.68f, 0.94f, 1.0f};
-    const core::Color perspectiveColor{0.94f, 0.66f, 0.30f, 1.0f};
+    const eui::Color rotateColor{0.84f, 0.46f, 0.60f, 1.0f};
+    const eui::Color fadeColor{0.50f, 0.72f, 0.34f, 1.0f};
+    const eui::Color scaleColor{0.92f, 0.62f, 0.26f, 1.0f};
+    const eui::Color radiusColor{0.50f, 0.58f, 0.94f, 1.0f};
+    const eui::Color glowColor{0.28f, 0.76f, 0.72f, 1.0f};
+    const eui::Color flipXColor{0.74f, 0.46f, 0.92f, 1.0f};
+    const eui::Color flipYColor{0.34f, 0.68f, 0.94f, 1.0f};
+    const eui::Color perspectiveColor{0.94f, 0.66f, 0.30f, 1.0f};
     const bool perspectiveActive = animationFlipX || animationFlipY || animationPerspective;
 
-    auto matrixButton = [&](const std::string& id, const char* label, bool active, const core::Color& color, const std::function<void()>& onClick) {
+    auto matrixButton = [&](const std::string& id, const char* label, bool active, const eui::Color& color, const std::function<void()>& onClick) {
         components::button(ui, id)
             .size(buttonWidth, 50.0f)
             .text(label)
             .colors(active ? color : surfaceSoft(),
                     buttonHover(active ? color : surfaceSoft()),
                     buttonPressed(active ? color : surfaceSoft()))
-            .textColor(active || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-            .iconColor(active || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+            .textColor(active || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+            .iconColor(active || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
             .border(1.0f, active ? withAlpha(color, 0.58f) : borderColor(0.70f))
             .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
             .onClick(onClick)
@@ -1325,8 +1320,8 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                 .colors(animationMoved ? accent() : surfaceSoft(),
                         buttonHover(animationMoved ? accent() : surfaceSoft()),
                         buttonPressed(animationMoved ? accent() : surfaceSoft()))
-                .textColor(animationMoved || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-                .iconColor(animationMoved || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .textColor(animationMoved || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .iconColor(animationMoved || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
                 .border(1.0f, animationMoved ? withAlpha(accent(), 0.58f) : borderColor(0.70f))
                 .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
                 .onClick([] { animationMoved = !animationMoved; })
@@ -1339,8 +1334,8 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                 .colors(animationRotated ? rotateColor : surfaceSoft(),
                         buttonHover(animationRotated ? rotateColor : surfaceSoft()),
                         buttonPressed(animationRotated ? rotateColor : surfaceSoft()))
-                .textColor(animationRotated || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-                .iconColor(animationRotated || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .textColor(animationRotated || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .iconColor(animationRotated || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
                 .border(1.0f, animationRotated ? withAlpha(rotateColor, 0.58f) : borderColor(0.70f))
                 .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
                 .onClick([] { animationRotated = !animationRotated; })
@@ -1353,8 +1348,8 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                 .colors(animationFaded ? fadeColor : surfaceSoft(),
                         buttonHover(animationFaded ? fadeColor : surfaceSoft()),
                         buttonPressed(animationFaded ? fadeColor : surfaceSoft()))
-                .textColor(animationFaded || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-                .iconColor(animationFaded || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .textColor(animationFaded || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .iconColor(animationFaded || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
                 .border(1.0f, animationFaded ? withAlpha(fadeColor, 0.58f) : borderColor(0.70f))
                 .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
                 .onClick([] { animationFaded = !animationFaded; })
@@ -1372,8 +1367,8 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                 .colors(animationScaled ? scaleColor : surfaceSoft(),
                         buttonHover(animationScaled ? scaleColor : surfaceSoft()),
                         buttonPressed(animationScaled ? scaleColor : surfaceSoft()))
-                .textColor(animationScaled || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-                .iconColor(animationScaled || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .textColor(animationScaled || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .iconColor(animationScaled || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
                 .border(1.0f, animationScaled ? withAlpha(scaleColor, 0.58f) : borderColor(0.70f))
                 .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
                 .onClick([] { animationScaled = !animationScaled; })
@@ -1386,8 +1381,8 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                 .colors(animationRounded ? radiusColor : surfaceSoft(),
                         buttonHover(animationRounded ? radiusColor : surfaceSoft()),
                         buttonPressed(animationRounded ? radiusColor : surfaceSoft()))
-                .textColor(animationRounded || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-                .iconColor(animationRounded || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .textColor(animationRounded || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .iconColor(animationRounded || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
                 .border(1.0f, animationRounded ? withAlpha(radiusColor, 0.58f) : borderColor(0.70f))
                 .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
                 .onClick([] { animationRounded = !animationRounded; })
@@ -1400,8 +1395,8 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                 .colors(animationGlowing ? glowColor : surfaceSoft(),
                         buttonHover(animationGlowing ? glowColor : surfaceSoft()),
                         buttonPressed(animationGlowing ? glowColor : surfaceSoft()))
-                .textColor(animationGlowing || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
-                .iconColor(animationGlowing || optionNight ? core::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .textColor(animationGlowing || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
+                .iconColor(animationGlowing || optionNight ? eui::Color{0.94f, 0.97f, 1.0f, 1.0f} : textPrimary())
                 .border(1.0f, animationGlowing ? withAlpha(glowColor, 0.58f) : borderColor(0.70f))
                 .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
                 .onClick([] { animationGlowing = !animationGlowing; })
@@ -1458,7 +1453,7 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                 .onClick([] { animationPerspective = !animationPerspective; })
                 .opacity(animationFaded ? 0.36f : 1.0f)
                 .transition(motionTransition())
-                .animate(core::AnimProperty::Opacity | core::AnimProperty::Transform)
+                .animate(eui::AnimProperty::Opacity | eui::AnimProperty::Transform)
                 .content([&] {
                     ui.rect("animation.actor.bg")
                         .size(actorWidth, actorHeight)
@@ -1468,7 +1463,7 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                         .shadow(animationGlowing ? 44.0f : 26.0f, 0.0f, animationGlowing ? 0.0f : 12.0f,
                                 animationGlowing ? withAlpha(glowColor, optionNight ? 0.42f : 0.26f) : shadowColor(0.32f, 0.16f))
                         .transition(motionTransition())
-                        .animate(core::AnimProperty::Color | core::AnimProperty::Radius | core::AnimProperty::Shadow)
+                        .animate(eui::AnimProperty::Color | eui::AnimProperty::Radius | eui::AnimProperty::Shadow)
                         .build();
 
                     ui.rect("animation.actor.chip.primary")
@@ -1478,7 +1473,7 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                         .color(perspectiveActive ? flipXColor : withAlpha(textPrimary(), 0.88f))
                         .radius(12.0f)
                         .transition(motionTransition())
-                        .animate(core::AnimProperty::Color)
+                        .animate(eui::AnimProperty::Color)
                         .build();
 
                     ui.rect("animation.actor.chip.secondary")
@@ -1488,7 +1483,7 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                         .color(perspectiveActive ? flipYColor : withAlpha(textPrimary(), 0.72f))
                         .radius(12.0f)
                         .transition(motionTransition())
-                        .animate(core::AnimProperty::Color)
+                        .animate(eui::AnimProperty::Color)
                         .build();
 
                     ui.image("animation.actor.icon")
@@ -1507,9 +1502,9 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                         .text(animationFlipX ? "Flip X" : (animationFlipY ? "Flip Y" : (animationPerspective ? "Depth" : "Motion")))
                         .fontSize(24.0f)
                         .lineHeight(29.0f)
-                        .color(core::Color{0.96f, 0.97f, 1.0f, 1.0f})
+                        .color(eui::Color{0.96f, 0.97f, 1.0f, 1.0f})
                         .transition(motionTransition())
-                        .animate(core::AnimProperty::TextColor)
+                        .animate(eui::AnimProperty::TextColor)
                         .build();
 
                     ui.text("animation.actor.note")
@@ -1521,22 +1516,22 @@ void composeAnimationPage(core::dsl::Ui& ui, float width, float height) {
                               (animationPerspective ? "translateZ + perspective" : "one card, many transforms")))
                         .fontSize(15.0f)
                         .lineHeight(20.0f)
-                        .color(withAlpha(core::Color{0.96f, 0.97f, 1.0f, 1.0f}, 0.74f))
-                        .horizontalAlign(core::HorizontalAlign::Center)
+                        .color(withAlpha(eui::Color{0.96f, 0.97f, 1.0f, 1.0f}, 0.74f))
+                        .horizontalAlign(eui::HorizontalAlign::Center)
                         .build();
                 })
                 .build();
         });
 }
 
-void settingRow(core::dsl::Ui& ui, const std::string& id, const std::string& title, const std::string& note, bool enabled, float width, const std::function<void()>& onClick) {
+void settingRow(eui::Ui& ui, const std::string& id, const std::string& title, const std::string& note, bool enabled, float width, const std::function<void()>& onClick) {
     const float toggleX = std::max(0.0f, width - 80.0f);
     const float textWidth = std::max(0.0f, width - 132.0f);
     components::SwitchStyle switchStyle(themeColors());
     switchStyle.on = accent();
     switchStyle.knob = optionNight
-        ? core::Color{0.96f, 0.98f, 1.0f, 1.0f}
-        : core::Color{1.0f, 1.0f, 1.0f, 1.0f};
+        ? eui::Color{0.96f, 0.98f, 1.0f, 1.0f}
+        : eui::Color{1.0f, 1.0f, 1.0f, 1.0f};
 
     ui.stack(id)
         .size(width, 72.0f)
@@ -1592,7 +1587,7 @@ void settingRow(core::dsl::Ui& ui, const std::string& id, const std::string& tit
         .build();
 }
 
-void composeSettingsPage(core::dsl::Ui& ui, float width, float height) {
+void composeSettingsPage(eui::Ui& ui, float width, float height) {
     const float rowWidth = std::max(0.0f, std::min(width, 720.0f));
 
     ui.column("settings.list")
@@ -1607,7 +1602,7 @@ void composeSettingsPage(core::dsl::Ui& ui, float width, float height) {
         });
 }
 
-void composeBingPage(core::dsl::Ui& ui, float width, float height) {
+void composeBingPage(eui::Ui& ui, float width, float height) {
     const float contentWidth = std::max(260.0f, std::min(width, 860.0f));
     const float mediaHeight = 282.0f;
     const float apiHeight = 138.0f;
@@ -1620,14 +1615,14 @@ void composeBingPage(core::dsl::Ui& ui, float width, float height) {
     components::CarouselStyle carouselStyle(themeColors());
     carouselStyle.background = surface();
     carouselStyle.border = borderColor(0.72f);
-    carouselStyle.text = core::Color{1.0f, 1.0f, 1.0f, 0.96f};
-    carouselStyle.mutedText = core::Color{1.0f, 1.0f, 1.0f, 0.70f};
+    carouselStyle.text = eui::Color{1.0f, 1.0f, 1.0f, 0.96f};
+    carouselStyle.mutedText = eui::Color{1.0f, 1.0f, 1.0f, 0.70f};
     carouselStyle.activeIndicator = accent();
     carouselStyle.shadow = components::theme::shadow(themeColors(), 26.0f, 10.0f, 0.30f, 0.16f);
 
     ui.column("bing.body")
         .size(width, height)
-        .alignItems(core::Align::CENTER)
+        .alignItems(eui::Align::CENTER)
         .gap(22.0f)
         .content([&] {
             components::carousel(ui, "bing.media.carousel")
@@ -1680,7 +1675,7 @@ void composeBingPage(core::dsl::Ui& ui, float width, float height) {
         });
 }
 
-void composeAboutPage(core::dsl::Ui& ui, float width, float height) {
+void composeAboutPage(eui::Ui& ui, float width, float height) {
     const float contentWidth = std::max(280.0f, std::min(width, 860.0f));
     const bool compact = contentWidth < 620.0f;
     const float logoSize = compact ? 112.0f : 126.0f;
@@ -1694,7 +1689,7 @@ void composeAboutPage(core::dsl::Ui& ui, float width, float height) {
 
     ui.column("about.body")
         .size(width, height)
-        .alignItems(core::Align::CENTER)
+        .alignItems(eui::Align::CENTER)
         .gap(20.0f)
         .content([&] {
             ui.stack("about.hero")
@@ -1738,7 +1733,7 @@ void composeAboutPage(core::dsl::Ui& ui, float width, float height) {
                         .fontSize(32.0f)
                         .lineHeight(36.0f)
                         .color(textPrimary())
-                        .horizontalAlign(compact ? core::HorizontalAlign::Center : core::HorizontalAlign::Left)
+                        .horizontalAlign(compact ? eui::HorizontalAlign::Center : eui::HorizontalAlign::Left)
                         .build();
 
                     ui.text("about.hero.copy")
@@ -1751,7 +1746,7 @@ void composeAboutPage(core::dsl::Ui& ui, float width, float height) {
                         .maxWidth(infoWidth)
                         .wrap(true)
                         .color(textMuted())
-                        .horizontalAlign(compact ? core::HorizontalAlign::Center : core::HorizontalAlign::Left)
+                        .horizontalAlign(compact ? eui::HorizontalAlign::Center : eui::HorizontalAlign::Left)
                         .build();
 
                     ui.row("about.actions")
@@ -1772,7 +1767,7 @@ void composeAboutPage(core::dsl::Ui& ui, float width, float height) {
                                 .shadow(14.0f, 0.0f, 5.0f, shadowColor(0.22f, 0.10f))
                                 .transition(pageTransition())
                                 .onClick([] {
-                                    core::platform::openUrl("https://github.com/sudoevolve/EUI-NEO");
+                                    eui::platform::openUrl("https://github.com/sudoevolve/EUI-NEO");
                                 })
                                 .build();
 
@@ -1790,7 +1785,7 @@ void composeAboutPage(core::dsl::Ui& ui, float width, float height) {
                                 .shadow(12.0f, 0.0f, 4.0f, shadowColor(0.18f, 0.08f))
                                 .transition(pageTransition())
                                 .onClick([] {
-                                    core::platform::openUrl("https://qm.qq.com/q/kaPB4paOpa");
+                                    eui::platform::openUrl("https://qm.qq.com/q/kaPB4paOpa");
                                 })
                                 .build();
                         });
@@ -1842,7 +1837,7 @@ void composeAboutPage(core::dsl::Ui& ui, float width, float height) {
         });
 }
 
-void composePageBody(core::dsl::Ui& ui, float width, float height) {
+void composePageBody(eui::Ui& ui, float width, float height) {
     if (selectedPage == 0) {
         composeControlsPage(ui, width, height);
     } else if (selectedPage == 1) {
@@ -1858,7 +1853,7 @@ void composePageBody(core::dsl::Ui& ui, float width, float height) {
     }
 }
 
-void composeContent(core::dsl::Ui& ui, float width, float height) {
+void composeContent(eui::Ui& ui, float width, float height) {
     const float shellWidth = std::max(0.0f, width - 72.0f);
     const float innerWidth = std::max(0.0f, shellWidth - 64.0f);
     const float shellHeight = std::max(0.0f, height - 72.0f);
@@ -1921,7 +1916,7 @@ void composeContent(core::dsl::Ui& ui, float width, float height) {
                                 .onChange([page](float value) {
                                     pageScroll[page] = value;
                                 })
-                                .content([&](core::dsl::Ui& contentUi, float contentWidth, float viewportHeight) {
+                                .content([&](eui::Ui& contentUi, float contentWidth, float viewportHeight) {
                                     composePageBody(contentUi, contentWidth, viewportHeight);
                                 })
                                 .build();
@@ -1944,7 +1939,7 @@ const DslAppConfig& dslAppConfig() {
     return config;
 }
 
-void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
+void compose(eui::Ui& ui, const eui::Screen& screen) {
     const float contentWidth = std::max(0.0f, screen.width - kSidebarWidth);
 
     ui.row("root")
@@ -2053,7 +2048,7 @@ void compose(core::dsl::Ui& ui, const core::dsl::Screen& screen) {
         .onOpenChange([](bool open) {
             sampleColorOpen = open;
         })
-        .onChange([](core::Color color) {
+        .onChange([](eui::Color color) {
             sampleColor = color;
             sampleFeedback = "Color changed";
         })

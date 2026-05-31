@@ -1,10 +1,7 @@
 #pragma once
 
 #include <glad/glad.h>
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
+#include "core/platform/window_backend.h"
 
 #include <algorithm>
 #include <cmath>
@@ -366,8 +363,8 @@ private:
     };
 
     static SharedResources& sharedResources() {
-        static std::unordered_map<GLFWwindow*, SharedResources> resourcesByContext;
-        return resourcesByContext[glfwGetCurrentContext()];
+        static std::unordered_map<window::ContextKey, SharedResources> resourcesByContext;
+        return resourcesByContext[window::currentContextKey()];
     }
 
     static bool retainSharedResources(const char* vertexSource, const char* fragmentSource) {
@@ -849,8 +846,8 @@ private:
     };
 
     static SharedResources& sharedResources() {
-        static std::unordered_map<GLFWwindow*, SharedResources> resourcesByContext;
-        return resourcesByContext[glfwGetCurrentContext()];
+        static std::unordered_map<window::ContextKey, SharedResources> resourcesByContext;
+        return resourcesByContext[window::currentContextKey()];
     }
 
     static bool retainSharedResources(const char* vertexSource, const char* fragmentSource) {

@@ -1,4 +1,4 @@
-#include "core/ime_bridge.h"
+#include "core/platform/ime_bridge.h"
 
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE

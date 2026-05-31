@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/layout.h"
-#include "core/primitive.h"
+#include "core/render/primitive.h"
 
 #include <algorithm>
 #include <cmath>

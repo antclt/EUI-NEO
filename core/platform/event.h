@@ -1,11 +1,14 @@
 #pragma once
 
+#include "core/render/primitive.h"
+#include "core/platform/window_backend.h"
+
+#if !defined(EUI_WINDOW_BACKEND_SDL2)
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
 #endif
 #include <GLFW/glfw3.h>
-
-#include "core/primitive.h"
+#endif
 
 #include <cmath>
 #include <string>
@@ -68,6 +71,25 @@ struct ScrollEvent {
     }
 };
 
+enum class InputKey {
+    Backspace,
+    Delete,
+    Enter,
+    Left,
+    Right,
+    Up,
+    Down,
+    Home,
+    End,
+    Escape,
+    A,
+    C,
+    V,
+    X,
+    Y,
+    Z
+};
+
 namespace detail {
 
 struct InputQueue {
@@ -100,21 +122,21 @@ struct PointerState {
     bool lastRightDown = false;
 };
 
-inline std::unordered_map<GLFWwindow*, InputQueue>& inputQueues() {
-    static std::unordered_map<GLFWwindow*, InputQueue> queues;
+inline std::unordered_map<window::Handle, InputQueue>& inputQueues() {
+    static std::unordered_map<window::Handle, InputQueue> queues;
     return queues;
 }
 
-inline std::unordered_map<GLFWwindow*, PointerState>& pointerStates() {
-    static std::unordered_map<GLFWwindow*, PointerState> states;
+inline std::unordered_map<window::Handle, PointerState>& pointerStates() {
+    static std::unordered_map<window::Handle, PointerState> states;
     return states;
 }
 
-inline InputQueue& inputQueue(GLFWwindow* window) {
+inline InputQueue& inputQueue(window::Handle window) {
     return inputQueues()[window];
 }
 
-inline PointerState& pointerState(GLFWwindow* window) {
+inline PointerState& pointerState(window::Handle window) {
     return pointerStates()[window];
 }
 
@@ -141,99 +163,107 @@ inline void appendUtf8(std::string& output, unsigned int codepoint) {
 
 } // namespace detail
 
-inline void installInputCallbacks(GLFWwindow* window) {
+inline void queueTextInput(window::Handle window, const std::string& text) {
+    detail::inputQueue(window).text += text;
+}
+
+inline void queueScrollInput(window::Handle window, double x, double y) {
+    detail::InputQueue& queue = detail::inputQueue(window);
+    queue.scrollX += x;
+    queue.scrollY += y;
+}
+
+inline void queueKeyInput(window::Handle window, InputKey key, bool ctrl = false, bool shift = false) {
+    detail::InputQueue& queue = detail::inputQueue(window);
+    queue.shift = shift;
+    if (ctrl && key == InputKey::V) {
+        queue.pasteText += core::window::clipboardText(window);
+        return;
+    }
+    if (ctrl && key == InputKey::C) {
+        queue.copy = true;
+        return;
+    }
+    if (ctrl && key == InputKey::X) {
+        queue.cut = true;
+        return;
+    }
+    if (ctrl && key == InputKey::Z) {
+        shift ? queue.redo = true : queue.undo = true;
+        return;
+    }
+    if (ctrl && key == InputKey::Y) {
+        queue.redo = true;
+        return;
+    }
+    if (ctrl && key == InputKey::A) {
+        queue.selectAll = true;
+        return;
+    }
+
+    switch (key) {
+    case InputKey::Backspace: queue.backspace = true; break;
+    case InputKey::Delete: queue.del = true; break;
+    case InputKey::Enter: queue.enter = true; break;
+    case InputKey::Left: queue.left = true; break;
+    case InputKey::Right: queue.right = true; break;
+    case InputKey::Up: queue.up = true; break;
+    case InputKey::Down: queue.down = true; break;
+    case InputKey::Home: queue.home = true; break;
+    case InputKey::End: queue.end = true; break;
+    case InputKey::Escape: queue.escape = true; break;
+    default: break;
+    }
+}
+
+inline void installInputCallbacks(window::Handle window) {
     if (!window) {
         return;
     }
 
-    glfwSetCharCallback(window, [](GLFWwindow* currentWindow, unsigned int codepoint) {
+#if !defined(EUI_WINDOW_BACKEND_SDL2)
+    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(window);
+    glfwSetCharCallback(glfwWindow, [](GLFWwindow* currentWindow, unsigned int codepoint) {
         detail::appendUtf8(detail::inputQueue(currentWindow).text, codepoint);
     });
 
-    glfwSetScrollCallback(window, [](GLFWwindow* currentWindow, double xoffset, double yoffset) {
-        detail::InputQueue& queue = detail::inputQueue(currentWindow);
-        queue.scrollX += xoffset;
-        queue.scrollY += yoffset;
+    glfwSetScrollCallback(glfwWindow, [](GLFWwindow* currentWindow, double xoffset, double yoffset) {
+        queueScrollInput(currentWindow, xoffset, yoffset);
     });
 
-    glfwSetKeyCallback(window, [](GLFWwindow* currentWindow, int key, int, int action, int mods) {
+    glfwSetKeyCallback(glfwWindow, [](GLFWwindow* currentWindow, int key, int, int action, int mods) {
         if (action != GLFW_PRESS && action != GLFW_REPEAT) {
             return;
         }
 
-        detail::InputQueue& queue = detail::inputQueue(currentWindow);
         const bool ctrl = (mods & GLFW_MOD_CONTROL) != 0 || (mods & GLFW_MOD_SUPER) != 0;
-        queue.shift = (mods & GLFW_MOD_SHIFT) != 0;
-        if (ctrl && key == GLFW_KEY_V) {
-            if (const char* clipboard = glfwGetClipboardString(currentWindow)) {
-                queue.pasteText += clipboard;
-            }
-            return;
-        }
-        if (ctrl && key == GLFW_KEY_C) {
-            queue.copy = true;
-            return;
-        }
-        if (ctrl && key == GLFW_KEY_X) {
-            queue.cut = true;
-            return;
-        }
-        if (ctrl && key == GLFW_KEY_Z) {
-            if ((mods & GLFW_MOD_SHIFT) != 0) {
-                queue.redo = true;
-            } else {
-                queue.undo = true;
-            }
-            return;
-        }
-        if (ctrl && key == GLFW_KEY_Y) {
-            queue.redo = true;
-            return;
-        }
-        if (ctrl && key == GLFW_KEY_A) {
-            queue.selectAll = true;
-            return;
-        }
-
+        const bool shift = (mods & GLFW_MOD_SHIFT) != 0;
         switch (key) {
-        case GLFW_KEY_BACKSPACE:
-            queue.backspace = true;
-            break;
-        case GLFW_KEY_DELETE:
-            queue.del = true;
-            break;
+        case GLFW_KEY_BACKSPACE: queueKeyInput(currentWindow, InputKey::Backspace, ctrl, shift); break;
+        case GLFW_KEY_DELETE: queueKeyInput(currentWindow, InputKey::Delete, ctrl, shift); break;
         case GLFW_KEY_ENTER:
-        case GLFW_KEY_KP_ENTER:
-            queue.enter = true;
-            break;
-        case GLFW_KEY_LEFT:
-            queue.left = true;
-            break;
-        case GLFW_KEY_RIGHT:
-            queue.right = true;
-            break;
-        case GLFW_KEY_UP:
-            queue.up = true;
-            break;
-        case GLFW_KEY_DOWN:
-            queue.down = true;
-            break;
-        case GLFW_KEY_HOME:
-            queue.home = true;
-            break;
-        case GLFW_KEY_END:
-            queue.end = true;
-            break;
-        case GLFW_KEY_ESCAPE:
-            queue.escape = true;
-            break;
+        case GLFW_KEY_KP_ENTER: queueKeyInput(currentWindow, InputKey::Enter, ctrl, shift); break;
+        case GLFW_KEY_LEFT: queueKeyInput(currentWindow, InputKey::Left, ctrl, shift); break;
+        case GLFW_KEY_RIGHT: queueKeyInput(currentWindow, InputKey::Right, ctrl, shift); break;
+        case GLFW_KEY_UP: queueKeyInput(currentWindow, InputKey::Up, ctrl, shift); break;
+        case GLFW_KEY_DOWN: queueKeyInput(currentWindow, InputKey::Down, ctrl, shift); break;
+        case GLFW_KEY_HOME: queueKeyInput(currentWindow, InputKey::Home, ctrl, shift); break;
+        case GLFW_KEY_END: queueKeyInput(currentWindow, InputKey::End, ctrl, shift); break;
+        case GLFW_KEY_ESCAPE: queueKeyInput(currentWindow, InputKey::Escape, ctrl, shift); break;
+        case GLFW_KEY_A: queueKeyInput(currentWindow, InputKey::A, ctrl, shift); break;
+        case GLFW_KEY_C: queueKeyInput(currentWindow, InputKey::C, ctrl, shift); break;
+        case GLFW_KEY_V: queueKeyInput(currentWindow, InputKey::V, ctrl, shift); break;
+        case GLFW_KEY_X: queueKeyInput(currentWindow, InputKey::X, ctrl, shift); break;
+        case GLFW_KEY_Y: queueKeyInput(currentWindow, InputKey::Y, ctrl, shift); break;
+        case GLFW_KEY_Z: queueKeyInput(currentWindow, InputKey::Z, ctrl, shift); break;
         default:
             break;
         }
     });
+#endif
 }
 
-inline std::pair<KeyboardEvent, ScrollEvent> consumeInputEvents(GLFWwindow* window) {
+inline std::pair<KeyboardEvent, ScrollEvent> consumeInputEvents(window::Handle window) {
     detail::InputQueue& queue = detail::inputQueue(window);
     KeyboardEvent keyboard;
     keyboard.text = std::move(queue.text);
@@ -260,11 +290,7 @@ inline std::pair<KeyboardEvent, ScrollEvent> consumeInputEvents(GLFWwindow* wind
     return {std::move(keyboard), scroll};
 }
 
-inline std::pair<KeyboardEvent, ScrollEvent> consumeInputEvents() {
-    return consumeInputEvents(glfwGetCurrentContext());
-}
-
-inline void releaseInputQueue(GLFWwindow* window) {
+inline void releaseInputQueue(window::Handle window) {
     detail::inputQueues().erase(window);
     detail::pointerStates().erase(window);
 }
@@ -337,12 +363,12 @@ struct InteractionState {
     }
 };
 
-inline PointerEvent readPointerEvent(GLFWwindow* window, float dpiScale = 1.0f) {
+inline PointerEvent readPointerEvent(window::Handle window, float dpiScale = 1.0f) {
     detail::PointerState& state = detail::pointerState(window);
 
     double x = 0.0;
     double y = 0.0;
-    glfwGetCursorPos(window, &x, &y);
+    core::window::getCursorPosition(window, x, y);
     x *= dpiScale;
     y *= dpiScale;
 
@@ -351,8 +377,8 @@ inline PointerEvent readPointerEvent(GLFWwindow* window, float dpiScale = 1.0f) 
     event.y = y;
     event.deltaX = x - state.lastX;
     event.deltaY = y - state.lastY;
-    event.down = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
-    event.rightDown = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
+    event.down = core::window::isMouseButtonDown(window, 0);
+    event.rightDown = core::window::isMouseButtonDown(window, 1);
     event.pressedThisFrame = event.down && !state.lastDown;
     event.releasedThisFrame = !event.down && state.lastDown;
     event.rightPressedThisFrame = event.rightDown && !state.lastRightDown;

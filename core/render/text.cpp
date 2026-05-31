@@ -6,15 +6,16 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(__linux__)
+#include <unistd.h>
 #endif
 
-#include "core/text.h"
+#include "core/render/text.h"
+#include "core/platform/window_backend.h"
 
 #include <glad/glad.h>
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -152,8 +153,8 @@ SharedTextAtlas& sharedTextAtlas() {
 }
 
 SharedTextRenderResources& sharedTextRenderResources() {
-    static std::unordered_map<GLFWwindow*, SharedTextRenderResources> resourcesByContext;
-    return resourcesByContext[glfwGetCurrentContext()];
+    static std::unordered_map<window::ContextKey, SharedTextRenderResources> resourcesByContext;
+    return resourcesByContext[window::currentContextKey()];
 }
 
 GLuint compileGlShader(GLenum type, const char* source) {
@@ -407,13 +408,37 @@ std::filesystem::path executableDirectory() {
         buffer.resize(buffer.size() * 2);
     }
     return std::filesystem::path(buffer.data()).parent_path();
+#elif defined(__APPLE__)
+    std::vector<char> buffer(4096);
+    uint32_t size = static_cast<uint32_t>(buffer.size());
+    if (_NSGetExecutablePath(buffer.data(), &size) != 0) {
+        buffer.resize(size);
+        if (_NSGetExecutablePath(buffer.data(), &size) != 0) {
+            return {};
+        }
+    }
+    std::error_code error;
+    return std::filesystem::absolute(std::filesystem::path(buffer.data()), error).parent_path();
+#elif defined(__linux__)
+    std::vector<char> buffer(4096);
+    const ssize_t length = readlink("/proc/self/exe", buffer.data(), buffer.size() - 1);
+    if (length <= 0) {
+        return {};
+    }
+    buffer[static_cast<size_t>(length)] = '\0';
+    std::error_code error;
+    return std::filesystem::absolute(std::filesystem::path(buffer.data()), error).parent_path();
 #else
     return {};
 #endif
 }
 
+std::filesystem::path sourceRootDirectory() {
+    return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+}
+
 std::string resolveProjectAssetPath(const std::string& filename) {
-    const std::filesystem::path sourceRoot = std::filesystem::path(__FILE__).parent_path().parent_path();
+    const std::filesystem::path sourceRoot = sourceRootDirectory();
     const std::filesystem::path exeDir = executableDirectory();
     const std::filesystem::path candidates[] = {
         exeDir / "assets" / filename,
@@ -447,7 +472,7 @@ std::string resolveFontFilePath(const std::string& path) {
         return existing;
     }
 
-    const std::filesystem::path sourceRoot = std::filesystem::path(__FILE__).parent_path().parent_path();
+    const std::filesystem::path sourceRoot = sourceRootDirectory();
     const std::filesystem::path exeDir = executableDirectory();
     const std::filesystem::path candidates[] = {
         exeDir / "assets" / raw.filename(),

@@ -1,11 +1,7 @@
-#include "core/image.h"
-#include "core/async.h"
-#include "core/network.h"
-
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
+#include "core/render/image.h"
+#include "core/platform/async.h"
+#include "core/platform/network.h"
+#include "core/platform/window_backend.h"
 
 #include <algorithm>
 #include <atomic>
@@ -18,6 +14,20 @@
 #include <sstream>
 #include <unordered_map>
 #include <vector>
+
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(__linux__)
+#include <unistd.h>
+#endif
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "3rd/stb_image.h"
@@ -121,6 +131,50 @@ std::string buildDownloadedImagePath(const std::string& url) {
 
 bool isBingDailyScheme(const std::string& source) {
     return source.rfind("bing://daily", 0) == 0;
+}
+
+std::filesystem::path executableDirectory() {
+#ifdef _WIN32
+    std::vector<char> buffer(MAX_PATH);
+    DWORD length = 0;
+    while (true) {
+        length = GetModuleFileNameA(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (length == 0) {
+            return {};
+        }
+        if (length < buffer.size() - 1) {
+            break;
+        }
+        buffer.resize(buffer.size() * 2);
+    }
+    return std::filesystem::path(buffer.data()).parent_path();
+#elif defined(__APPLE__)
+    std::vector<char> buffer(4096);
+    uint32_t size = static_cast<uint32_t>(buffer.size());
+    if (_NSGetExecutablePath(buffer.data(), &size) != 0) {
+        buffer.resize(size);
+        if (_NSGetExecutablePath(buffer.data(), &size) != 0) {
+            return {};
+        }
+    }
+    std::error_code error;
+    return std::filesystem::absolute(std::filesystem::path(buffer.data()), error).parent_path();
+#elif defined(__linux__)
+    std::vector<char> buffer(4096);
+    const ssize_t length = readlink("/proc/self/exe", buffer.data(), buffer.size() - 1);
+    if (length <= 0) {
+        return {};
+    }
+    buffer[static_cast<size_t>(length)] = '\0';
+    std::error_code error;
+    return std::filesystem::absolute(std::filesystem::path(buffer.data()), error).parent_path();
+#else
+    return {};
+#endif
+}
+
+std::filesystem::path sourceRootDirectory() {
+    return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
 }
 
 std::string queryParamValue(const std::string& uri, const std::string& key) {
@@ -343,11 +397,21 @@ std::string resolveLocalImagePath(const std::string& source) {
         return {};
     }
 
+    const std::filesystem::path raw(source);
+    const std::filesystem::path exeDir = executableDirectory();
+    const std::filesystem::path sourceRoot = sourceRootDirectory();
+
     std::vector<std::filesystem::path> candidates;
-    candidates.emplace_back(source);
-    candidates.emplace_back(std::filesystem::current_path() / source);
-    candidates.emplace_back(std::filesystem::current_path() / "assets" / source);
-    candidates.emplace_back(std::filesystem::current_path() / "assets" / std::filesystem::path(source).filename());
+    candidates.emplace_back(raw);
+    candidates.emplace_back(std::filesystem::current_path() / raw);
+    candidates.emplace_back(std::filesystem::current_path() / "assets" / raw);
+    candidates.emplace_back(std::filesystem::current_path() / "assets" / raw.filename());
+    candidates.emplace_back(exeDir / raw);
+    candidates.emplace_back(exeDir / "assets" / raw);
+    candidates.emplace_back(exeDir / "assets" / raw.filename());
+    candidates.emplace_back(sourceRoot / raw);
+    candidates.emplace_back(sourceRoot / "assets" / raw);
+    candidates.emplace_back(sourceRoot / "assets" / raw.filename());
 
     std::error_code error;
     for (const auto& candidate : candidates) {
@@ -711,8 +775,8 @@ void ImagePrimitive::releaseCachedTextures() {
 }
 
 ImagePrimitive::SharedResources& ImagePrimitive::sharedResources() {
-    static std::unordered_map<GLFWwindow*, SharedResources> resourcesByContext;
-    return resourcesByContext[glfwGetCurrentContext()];
+    static std::unordered_map<window::ContextKey, SharedResources> resourcesByContext;
+    return resourcesByContext[window::currentContextKey()];
 }
 
 bool ImagePrimitive::retainSharedResources() {
@@ -927,7 +991,7 @@ bool ImagePrimitive::updateGifTexture(const std::string& resolvedPath) {
         gifDelays_ = gifFrames_->delays;
         gifFrameCount_ = gifFrames_->frameCount;
         gifFrameIndex_ = 0;
-        gifNextFrameTime_ = glfwGetTime() + static_cast<double>(gifDelays_.front()) / 1000.0;
+        gifNextFrameTime_ = window::timeSeconds() + static_cast<double>(gifDelays_.front()) / 1000.0;
         pendingLoad_ = false;
         return true;
     }
@@ -936,7 +1000,7 @@ bool ImagePrimitive::updateGifTexture(const std::string& resolvedPath) {
         return false;
     }
 
-    const double now = glfwGetTime();
+    const double now = window::timeSeconds();
     if (now < gifNextFrameTime_) {
         return false;
     }

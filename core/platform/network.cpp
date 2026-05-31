@@ -1,5 +1,6 @@
-#include "core/network.h"
-#include "core/async.h"
+#include "core/platform/network.h"
+#include "core/platform/window_backend.h"
+#include "core/platform/async.h"
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -11,11 +12,6 @@
 #include <windows.h>
 #include <urlmon.h>
 #endif
-
-#ifndef GLFW_INCLUDE_NONE
-#define GLFW_INCLUDE_NONE
-#endif
-#include <GLFW/glfw3.h>
 
 #if defined(EUI_HAS_CURL)
 #include <curl/curl.h>
@@ -268,7 +264,7 @@ bool consumeAnyTextReady() {
 }
 
 void postNetworkReadyEvent() {
-    glfwPostEmptyEvent();
+    window::postEmptyEvent();
 }
 
 void shutdown() {

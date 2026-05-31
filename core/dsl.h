@@ -2,10 +2,10 @@
 
 #include "core/layout.h"
 #include "core/animation.h"
-#include "core/event.h"
-#include "core/image.h"
-#include "core/primitive.h"
-#include "core/text.h"
+#include "core/platform/event.h"
+#include "core/render/image.h"
+#include "core/render/primitive.h"
+#include "core/render/text.h"
 
 #include <algorithm>
 #include <cstddef>

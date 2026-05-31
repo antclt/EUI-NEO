@@ -2,7 +2,7 @@
 
 #include "components/theme.h"
 #include "core/dsl.h"
-#include "core/text.h"
+#include "core/render/text.h"
 
 #include <string>
 

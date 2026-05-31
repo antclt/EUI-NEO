@@ -7,11 +7,17 @@ else()
     set(EUI_NEO_TOP_LEVEL_DEFAULT OFF)
 endif()
 option(EUI_BUILD_APPS "Build EUI-NEO bundled example applications" ${EUI_NEO_TOP_LEVEL_DEFAULT})
+set(EUI_WINDOW_BACKEND "glfw" CACHE STRING "Window backend: glfw or sdl2")
+set_property(CACHE EUI_WINDOW_BACKEND PROPERTY STRINGS glfw sdl2)
+if(NOT EUI_WINDOW_BACKEND MATCHES "^(glfw|sdl2)$")
+    message(FATAL_ERROR "EUI_WINDOW_BACKEND must be one of: glfw, sdl2")
+endif()
 
 if(APPLE)
     enable_language(OBJC)
-    set_source_files_properties(core/tray_bridge.c PROPERTIES LANGUAGE OBJC)
-    set_source_files_properties(core/ime_bridge.c PROPERTIES LANGUAGE OBJC)
+    set_source_files_properties(core/platform/native_bridge.c PROPERTIES LANGUAGE OBJC)
+    set_source_files_properties(core/platform/tray_bridge.c PROPERTIES LANGUAGE OBJC)
+    set_source_files_properties(core/platform/ime_bridge.c PROPERTIES LANGUAGE OBJC)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -22,19 +28,36 @@ set(CMAKE_C_STANDARD_REQUIRED TRUE)
 include("${CMAKE_CURRENT_SOURCE_DIR}/3rd/dependencies.cmake")
 
 set(CORE_SOURCES
-    core/async.cpp
-    core/image.cpp
-    core/ime_bridge.c
-    core/network.cpp
-    core/platform.cpp
-    core/tray_bridge.c
-    core/text.cpp
+    core/platform/async.cpp
+    core/platform/network.cpp
+    core/platform/native_bridge.c
+    core/platform/platform.cpp
+    core/render/image.cpp
+    core/render/text.cpp
+    core/platform/tray_bridge.c
+    core/platform/window_backend.cpp
 )
+
+if(EUI_WINDOW_BACKEND STREQUAL "glfw")
+    list(APPEND CORE_SOURCES core/platform/ime_bridge.c)
+endif()
 
 add_library(eui_neo STATIC ${CORE_SOURCES})
 add_library(eui::neo ALIAS eui_neo)
-target_include_directories(eui_neo PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${TRAY_INCLUDE_DIR})
-target_link_libraries(eui_neo PUBLIC glfw glad OpenGL::GL Threads::Threads)
+target_include_directories(eui_neo PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${TRAY_INCLUDE_DIR})
+target_link_libraries(eui_neo PUBLIC glad OpenGL::GL Threads::Threads)
+
+if(EUI_WINDOW_BACKEND STREQUAL "sdl2")
+    if(NOT TARGET SDL2::SDL2)
+        find_package(SDL2 CONFIG REQUIRED)
+    endif()
+    target_compile_definitions(eui_neo PUBLIC EUI_WINDOW_BACKEND_SDL2=1)
+    target_link_libraries(eui_neo PUBLIC SDL2::SDL2)
+    set(EUI_APP_MAIN_SOURCE core/app/sdl2_app_main.cpp)
+else()
+    target_link_libraries(eui_neo PUBLIC glfw)
+    set(EUI_APP_MAIN_SOURCE core/app/glfw_app_main.cpp)
+endif()
 
 if(TARGET harfbuzz::harfbuzz)
     target_link_libraries(eui_neo PUBLIC harfbuzz::harfbuzz)
@@ -113,7 +136,7 @@ function(eui_neo_configure_app target_name)
         target_link_options(${target_name} PRIVATE -Wl,--gc-sections -s)
     endif()
 
-    if(WIN32)
+    if(WIN32 AND EUI_WINDOW_BACKEND STREQUAL "glfw")
         add_custom_command(TARGET ${target_name} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             $<TARGET_FILE:glfw>
@@ -129,10 +152,10 @@ function(configure_opengl_app target_name)
 endfunction()
 
 if(EUI_BUILD_APPS)
-    file(GLOB APP_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/app/*.cpp")
+    file(GLOB APP_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cpp")
     foreach(app_source ${APP_SOURCES})
         get_filename_component(app_name "${app_source}" NAME_WE)
-        add_executable(${app_name} main.cpp "${app_source}" ${APP_ICON_RESOURCE})
+        add_executable(${app_name} ${EUI_APP_MAIN_SOURCE} "${app_source}" ${APP_ICON_RESOURCE})
         eui_neo_configure_app(${app_name})
     endforeach()
 endif()
