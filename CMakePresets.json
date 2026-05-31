@@ -60,23 +60,28 @@
   "buildPresets": [
     {
       "name": "glfw-debug",
-      "configurePreset": "glfw-debug"
+      "configurePreset": "glfw-debug",
+      "configuration": "Debug"
     },
     {
       "name": "glfw-release",
-      "configurePreset": "glfw-release"
+      "configurePreset": "glfw-release",
+      "configuration": "Release"
     },
     {
       "name": "sdl2-debug",
-      "configurePreset": "sdl2-debug"
+      "configurePreset": "sdl2-debug",
+      "configuration": "Debug"
     },
     {
       "name": "sdl2-release",
-      "configurePreset": "sdl2-release"
+      "configurePreset": "sdl2-release",
+      "configuration": "Release"
     },
     {
       "name": "sdl2-fetch-release",
-      "configurePreset": "sdl2-fetch-release"
+      "configurePreset": "sdl2-fetch-release",
+      "configuration": "Release"
     }
   ]
 }

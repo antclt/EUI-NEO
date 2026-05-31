@@ -79,7 +79,7 @@ else()
 endif()
 
 if(WIN32)
-    target_compile_definitions(eui_neo PUBLIC EUI_TRAY_WINAPI=1)
+    target_compile_definitions(eui_neo PUBLIC EUI_TRAY_WINAPI=1 NOMINMAX)
     target_link_libraries(eui_neo PUBLIC winmm urlmon shell32 user32 imm32)
 elseif(APPLE)
     target_compile_definitions(eui_neo PUBLIC EUI_TRAY_APPKIT=1)

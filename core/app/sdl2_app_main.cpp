@@ -2,13 +2,19 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #include <mmsystem.h>
 #endif
 
 #include <glad/glad.h>
+#ifndef SDL_MAIN_HANDLED
+#define SDL_MAIN_HANDLED
+#endif
 #include <SDL.h>
-#if defined(__APPLE__)
+#if defined(_WIN32) || defined(__APPLE__)
 #include <SDL_syswm.h>
 #endif
 
@@ -82,7 +88,7 @@ double refreshRate(SDL_Window* window) {
 }
 
 void* nativeWindowHandle(SDL_Window* window) {
-#if defined(__APPLE__)
+#if defined(_WIN32) || defined(__APPLE__)
     if (window == nullptr) {
         return nullptr;
     }
@@ -91,11 +97,31 @@ void* nativeWindowHandle(SDL_Window* window) {
     if (SDL_GetWindowWMInfo(window, &info) != SDL_TRUE) {
         return nullptr;
     }
+#if defined(_WIN32)
+    if (info.subsystem != SDL_SYSWM_WINDOWS) {
+        return nullptr;
+    }
+    return info.info.win.window;
+#elif defined(__APPLE__)
     return info.info.cocoa.window;
+#endif
 #else
     (void)window;
     return nullptr;
 #endif
+}
+
+float dpiScale(SDL_Window* window) {
+#ifdef _WIN32
+    HWND hwnd = static_cast<HWND>(nativeWindowHandle(window));
+    if (hwnd != nullptr) {
+        const UINT dpi = GetDpiForWindow(hwnd);
+        if (dpi > 0) {
+            return static_cast<float>(dpi) / 96.0f;
+        }
+    }
+#endif
+    return pointerScale(window);
 }
 
 void attachNativeChildWindow(SDL_Window* parentWindow, SDL_Window* childWindow) {
@@ -360,13 +386,14 @@ bool updateManagedWindow(ManagedWindow& managed, float deltaSeconds, bool extern
     if (drawableWidth <= 0 || drawableHeight <= 0) {
         return true;
     }
-    const float dpiScale = pointerScale(managed.window);
-    const float logicalWidth = static_cast<float>(drawableWidth) / dpiScale;
-    const float logicalHeight = static_cast<float>(drawableHeight) / dpiScale;
+    const float dpi = dpiScale(managed.window);
+    const float pointer = pointerScale(managed.window);
+    const float logicalWidth = static_cast<float>(drawableWidth) / dpi;
+    const float logicalHeight = static_cast<float>(drawableHeight) / dpi;
 
-    managed.content.update(managed.window, deltaSeconds, logicalWidth, logicalHeight, dpiScale, dpiScale, externalReady);
+    managed.content.update(managed.window, deltaSeconds, logicalWidth, logicalHeight, pointer, dpi, externalReady);
     if (managed.content.needsRender()) {
-        managed.content.render(drawableWidth, drawableHeight, dpiScale);
+        managed.content.render(drawableWidth, drawableHeight, dpi);
         SDL_GL_SwapWindow(managed.window);
     }
     return true;
@@ -375,6 +402,12 @@ bool updateManagedWindow(ManagedWindow& managed, float deltaSeconds, bool extern
 } // namespace
 
 int main() {
+    SDL_SetMainReady();
+#ifdef _WIN32
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
+    SDL_SetHint(SDL_HINT_IME_SHOW_UI, "1");
+    SDL_SetHint(SDL_HINT_IME_INTERNAL_EDITING, "1");
+#endif
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
         return -1;
     }
@@ -514,11 +547,12 @@ int main() {
             mainWindowRuntime.markUnavailableFrame(core::window::timeSeconds());
             continue;
         }
-        const float scale = pointerScale(window);
+        const float dpi = dpiScale(window);
+        const float pointer = pointerScale(window);
         mainWindowRuntime.runFrame(
             window,
             renderBackend,
-            {drawableWidth, drawableHeight, scale, scale},
+            {drawableWidth, drawableHeight, dpi, pointer},
             now,
             refreshRate(window),
             findModalWindow(childWindows) == nullptr,

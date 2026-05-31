@@ -4,8 +4,42 @@
 #if defined(EUI_WINDOW_BACKEND_SDL2)
 
 #include <SDL.h>
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <imm.h>
+#include <SDL_syswm.h>
+#endif
 
 namespace core::window {
+
+#if defined(_WIN32)
+namespace {
+
+LONG roundLong(float value) {
+    return static_cast<LONG>(value >= 0.0f ? value + 0.5f : value - 0.5f);
+}
+
+HWND hwndForWindow(Handle window) {
+    if (window == nullptr) {
+        return nullptr;
+    }
+    SDL_SysWMinfo info;
+    SDL_VERSION(&info.version);
+    if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(window), &info) != SDL_TRUE ||
+        info.subsystem != SDL_SYSWM_WINDOWS) {
+        return nullptr;
+    }
+    return info.info.win.window;
+}
+
+} // namespace
+#endif
 
 ContextKey currentContextKey() {
     return SDL_GL_GetCurrentContext();
@@ -78,6 +112,44 @@ void setWindowIcon(Handle window, int width, int height, unsigned char* pixels) 
 }
 
 void setImeCursorRect(Handle window, float x, float y, float width, float height) {
+#if defined(_WIN32)
+    HWND hwnd = hwndForWindow(window);
+    if (hwnd != nullptr) {
+        HIMC context = ImmGetContext(hwnd);
+        if (context != nullptr) {
+            const LONG caretX = roundLong(x);
+            const LONG caretY = roundLong(y + height);
+
+            COMPOSITIONFORM composition{};
+            composition.dwStyle = CFS_FORCE_POSITION;
+            composition.ptCurrentPos.x = caretX;
+            composition.ptCurrentPos.y = caretY;
+            composition.rcArea.left = roundLong(x);
+            composition.rcArea.top = roundLong(y);
+            composition.rcArea.right = roundLong(x + width);
+            composition.rcArea.bottom = roundLong(y + height);
+            ImmSetCompositionWindow(context, &composition);
+
+            CANDIDATEFORM candidate{};
+            candidate.dwIndex = 0;
+            candidate.dwStyle = CFS_CANDIDATEPOS;
+            candidate.ptCurrentPos.x = caretX;
+            candidate.ptCurrentPos.y = caretY;
+            candidate.rcArea = composition.rcArea;
+            ImmSetCandidateWindow(context, &candidate);
+
+            ImmReleaseContext(hwnd, context);
+        }
+    }
+
+    SDL_Rect rect{
+        roundLong(x),
+        roundLong(y),
+        roundLong(width),
+        roundLong(height)
+    };
+    SDL_SetTextInputRect(&rect);
+#else
     int windowWidth = 0;
     int windowHeight = 0;
     int drawableWidth = 0;
@@ -97,6 +169,7 @@ void setImeCursorRect(Handle window, float x, float y, float width, float height
         static_cast<int>(height / scaleY)
     };
     SDL_SetTextInputRect(&rect);
+#endif
 }
 
 } // namespace core::window
