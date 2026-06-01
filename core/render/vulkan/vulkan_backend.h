@@ -72,6 +72,11 @@ private:
     void beginLoadPass();
     void destroyRenderCacheResources();
     void transitionRenderCacheImage(VkImageLayout newLayout);
+    bool ensureRenderCacheResolvePipeline();
+    bool ensureRenderCacheResolveDescriptor();
+    void destroyRenderCacheResolvePipeline();
+    void destroyRenderCacheResolveResources();
+    bool drawRenderCacheResolve(int width, int height);
     VkExtent2D currentRenderExtent() const;
     VkFramebuffer currentFramebuffer() const;
     bool ensureRoundedRectPipeline();
@@ -161,6 +166,12 @@ private:
     VkExtent2D renderCacheExtent_{};
     bool renderCacheRecreated_ = false;
     bool renderingToCache_ = false;
+    VkDescriptorSetLayout renderCacheResolveDescriptorSetLayout_ = VK_NULL_HANDLE;
+    VkDescriptorPool renderCacheResolveDescriptorPool_ = VK_NULL_HANDLE;
+    VkDescriptorSet renderCacheResolveDescriptorSet_ = VK_NULL_HANDLE;
+    VkPipelineLayout renderCacheResolvePipelineLayout_ = VK_NULL_HANDLE;
+    VkPipeline renderCacheResolvePipeline_ = VK_NULL_HANDLE;
+    VkSampler renderCacheResolveSampler_ = VK_NULL_HANDLE;
 
     VkDescriptorSetLayout textDescriptorSetLayout_ = VK_NULL_HANDLE;
     VkDescriptorPool textDescriptorPool_ = VK_NULL_HANDLE;
