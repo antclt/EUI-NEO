@@ -62,28 +62,50 @@
       }
     },
     {
+      "name": "opengl-glfw-release",
+      "displayName": "OpenGL GLFW Release",
+      "description": "OpenGL render backend with the GLFW window backend.",
+      "binaryDir": "${sourceDir}/build/opengl-glfw-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EUI_WINDOW_BACKEND": "glfw",
+        "EUI_RENDER_BACKEND": "opengl",
+        "EUI_DEPS_MODE": "auto"
+      }
+    },
+    {
+      "name": "opengl-sdl2-release",
+      "displayName": "OpenGL SDL2 Release",
+      "description": "OpenGL render backend with the SDL2 window backend.",
+      "binaryDir": "${sourceDir}/build/opengl-sdl2-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EUI_WINDOW_BACKEND": "sdl2",
+        "EUI_RENDER_BACKEND": "opengl",
+        "EUI_DEPS_MODE": "auto"
+      }
+    },
+    {
       "name": "vulkan-glfw-release",
       "displayName": "Vulkan GLFW Release",
-      "description": "Experimental Vulkan render backend with the GLFW window backend.",
+      "description": "Vulkan render backend with the GLFW window backend.",
       "binaryDir": "${sourceDir}/build/vulkan-glfw-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "EUI_WINDOW_BACKEND": "glfw",
         "EUI_RENDER_BACKEND": "vulkan",
-        "EUI_ENABLE_EXPERIMENTAL_VULKAN_BACKEND": "ON",
         "EUI_DEPS_MODE": "auto"
       }
     },
     {
       "name": "vulkan-sdl2-release",
       "displayName": "Vulkan SDL2 Release",
-      "description": "Experimental Vulkan render backend with the SDL2 window backend.",
+      "description": "Vulkan render backend with the SDL2 window backend.",
       "binaryDir": "${sourceDir}/build/vulkan-sdl2-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "EUI_WINDOW_BACKEND": "sdl2",
         "EUI_RENDER_BACKEND": "vulkan",
-        "EUI_ENABLE_EXPERIMENTAL_VULKAN_BACKEND": "ON",
         "EUI_DEPS_MODE": "auto"
       }
     }
@@ -112,6 +134,16 @@
     {
       "name": "sdl2-fetch-release",
       "configurePreset": "sdl2-fetch-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "opengl-glfw-release",
+      "configurePreset": "opengl-glfw-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "opengl-sdl2-release",
+      "configurePreset": "opengl-sdl2-release",
       "configuration": "Release"
     },
     {
