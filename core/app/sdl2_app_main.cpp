@@ -13,6 +13,9 @@
 #define SDL_MAIN_HANDLED
 #endif
 #include <SDL.h>
+#if defined(EUI_RENDER_BACKEND_VULKAN)
+#include <SDL_vulkan.h>
+#endif
 
 #include "eui/app.h"
 #include "core/app/app_runner.h"
@@ -60,13 +63,21 @@ struct TimerResolutionGuard {
     }
 };
 
+void getDrawableSize(SDL_Window* window, int& width, int& height) {
+#if defined(EUI_RENDER_BACKEND_VULKAN)
+    SDL_Vulkan_GetDrawableSize(window, &width, &height);
+#else
+    SDL_GL_GetDrawableSize(window, &width, &height);
+#endif
+}
+
 float pointerScale(SDL_Window* window) {
     int windowWidth = 0;
     int windowHeight = 0;
     int drawableWidth = 0;
     int drawableHeight = 0;
     SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-    SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
+    getDrawableSize(window, drawableWidth, drawableHeight);
     if (windowWidth <= 0 || windowHeight <= 0) {
         return 1.0f;
     }
@@ -372,7 +383,7 @@ bool updateManagedWindow(ManagedWindow& managed, float deltaSeconds, bool extern
     managed.renderBackend->makeCurrent();
     int drawableWidth = 0;
     int drawableHeight = 0;
-    SDL_GL_GetDrawableSize(managed.window, &drawableWidth, &drawableHeight);
+    getDrawableSize(managed.window, drawableWidth, drawableHeight);
     if (drawableWidth <= 0 || drawableHeight <= 0) {
         return true;
     }
@@ -519,7 +530,7 @@ int main() {
 
         int drawableWidth = 0;
         int drawableHeight = 0;
-        SDL_GL_GetDrawableSize(window, &drawableWidth, &drawableHeight);
+        getDrawableSize(window, drawableWidth, drawableHeight);
         if (drawableWidth <= 0 || drawableHeight <= 0) {
             mainWindowRuntime.markUnavailableFrame(core::window::timeSeconds());
             continue;
