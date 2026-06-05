@@ -20,6 +20,7 @@
 
 #include "components/datatable.h"
 #include "components/dialog.h"
+#include "components/sidebar.h"
 #include "components/toast.h"
 #include "components/contextmenu.h"
 #include "components/carousel.h"

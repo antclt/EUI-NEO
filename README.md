@@ -223,20 +223,6 @@ tests/        Probe sources, fixture apps, and local benchmark notes
 - [Development And Release](docs/开发与发布.md)
 - [Review Checklist](docs/Review清单.md)
 
-## Current Components
-
-`components/components.h` exports the current component layer:
-
-- Basic wrappers: `panel`, `text` / `label`, `image`, `theme`
-- Controls: `button`, `checkbox`, `radio`, `toggleSwitch`, `progress`, `slider`, `input`, `segmented`, `stepper`, `tabs`, `scroll`, `scrollView`
-- Popups and feedback: `dialog`, `toast`, `contextMenu`, `dropdown`
-- Pickers: `datepicker`, `timepicker`, `colorpicker`
-- Data display: `dataTable` (`datatable` alias), `carousel`
-- Charts: `linechart` (`lineChart` alias), `barchart` (`barChart` alias), `piechart` (`pieChart` alias)
-- Input areas: `mouseArea`
-
-Components only compose DSL trees. They do not own backend primitives directly. Business state stays in the page or application layer: pass the current value into the builder, then write the next value back from callbacks.
-
 ## License
 
 EUI-NEO's original source code is licensed under the Apache License 2.0. Third-party code under `3rd/`, optional build-time dependencies fetched by CMake, and bundled fonts or icon fonts under `assets/` follow their respective upstream licenses and copyright notices.

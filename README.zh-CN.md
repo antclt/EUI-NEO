@@ -223,20 +223,6 @@ tests/        probe 源码、fixture 应用和本地 benchmark 记录
 - [开发与发布](docs/开发与发布.md)
 - [Review 清单](docs/Review清单.md)
 
-## 当前组件
-
-`components/components.h` 聚合导出当前组件层：
-
-- 基础包装：`panel`、`text` / `label`、`image`、`theme`
-- 控件：`button`、`checkbox`、`radio`、`toggleSwitch`、`progress`、`slider`、`input`、`segmented`、`stepper`、`tabs`、`scroll`、`scrollView`
-- 弹层和反馈：`dialog`、`toast`、`contextMenu`、`dropdown`
-- 选择器：`datepicker`、`timepicker`、`colorpicker`
-- 数据展示：`dataTable`（`datatable` 兼容别名）、`carousel`
-- 图表：`linechart`（`lineChart` 兼容别名）、`barchart`（`barChart` 兼容别名）、`piechart`（`pieChart` 兼容别名）
-- 输入热区：`mouseArea`
-
-组件只组合 DSL 树，不直接持有后端 primitive。业务状态仍然放在页面或业务层，通过 builder 参数传入当前值，再从回调写回 next value。
-
 ## 许可
 
 EUI-NEO 的原创源码采用 Apache License 2.0。`3rd/` 下的第三方代码、CMake 可选联网拉取的构建期依赖，以及 `assets/` 下随项目分发的字体和图标字体，遵循各自上游许可证和版权声明。

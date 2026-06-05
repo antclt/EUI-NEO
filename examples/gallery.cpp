@@ -52,6 +52,7 @@ bool sampleColorOpen = false;
 bool sampleDialogOpen = false;
 bool sampleToastVisible = false;
 bool sampleContextMenuOpen = false;
+bool workshopOpen = false;
 float sampleContextMenuX = 0.0f;
 float sampleContextMenuY = 0.0f;
 std::string sampleFeedback = "Ready";
@@ -1955,13 +1956,38 @@ void composeContent(eui::Ui& ui, float width, float height) {
                 .padding(0.0f)
                 .gap(headerGap)
                 .content([&] {
-                    ui.text("page.title")
+                    ui.row("page.title.row")
                         .size(innerWidth, 46.0f)
-                        .text(pageTitle())
-                        .fontSize(38.0f)
-                        .lineHeight(44.0f)
-                        .color(accent())
-                        .transition(textTransition())
+                        .alignItems(eui::Align::CENTER)
+                        .content([&] {
+                            const bool showWorkshopLink = selectedPage == 0;
+                            const float moreWidth = showWorkshopLink ? 64.0f : 0.0f;
+                            ui.text("page.title")
+                                .size(std::max(0.0f, innerWidth - moreWidth), 46.0f)
+                                .text(pageTitle())
+                                .fontSize(38.0f)
+                                .lineHeight(44.0f)
+                                .color(accent())
+                                .transition(textTransition())
+                                .build();
+
+                            if (showWorkshopLink) {
+                                ui.text("page.title.more")
+                                    .size(moreWidth, 24.0f)
+                                    .text("more")
+                                    .fontSize(14.0f)
+                                    .lineHeight(18.0f)
+                                    .fontWeight(760)
+                                    .color(accent())
+                                    .horizontalAlign(eui::HorizontalAlign::Left)
+                                    .verticalAlign(eui::VerticalAlign::Center)
+                                    .transition(textTransition())
+                                    .onClick([] {
+                                        workshopOpen = true;
+                                    })
+                                    .build();
+                            }
+                        })
                         .build();
 
                     ui.text("page.subtitle")
@@ -1992,6 +2018,18 @@ void composeContent(eui::Ui& ui, float width, float height) {
                         })
                         .build();
                 });
+
+            components::sidebar(ui, "workshop.sidebar")
+                .theme(themeColors())
+                .size(width, height)
+                .drawerWidth(430.0f)
+                .open(workshopOpen)
+                .zIndex(80)
+                .transition(pageTransition())
+                .onClose([] {
+                    workshopOpen = false;
+                })
+                .build();
         });
 }
 
