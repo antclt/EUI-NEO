@@ -195,6 +195,14 @@ void processMainEvent(SDL_Window* window, WindowState& state, const SDL_Event& e
         state.needsRender = true;
         return;
     }
+    if (event.type == SDL_TEXTEDITING) {
+        if (!inputEnabled) {
+            return;
+        }
+        core::queueTextEditing(window, event.edit.text);
+        state.needsRender = true;
+        return;
+    }
     if (event.type == SDL_MOUSEWHEEL) {
         if (!inputEnabled) {
             return;
@@ -344,6 +352,11 @@ void processManagedEvent(ManagedWindow& managed, const SDL_Event& event) {
         managed.content.markNeedsRender();
         return;
     }
+    if (event.type == SDL_TEXTEDITING) {
+        core::queueTextEditing(managed.window, event.edit.text);
+        managed.content.markNeedsRender();
+        return;
+    }
     if (event.type == SDL_MOUSEWHEEL) {
         core::queueScrollInput(managed.window, event.wheel.preciseX, event.wheel.preciseY);
         managed.content.markNeedsRender();
@@ -483,10 +496,12 @@ int main() {
             SDL_Event event{};
             if (SDL_WaitEventTimeout(&event, 100)) {
                 if (event.type == SDL_WINDOWEVENT || event.type == SDL_KEYDOWN ||
-                    event.type == SDL_TEXTINPUT || event.type == SDL_MOUSEWHEEL) {
+                    event.type == SDL_TEXTINPUT || event.type == SDL_TEXTEDITING ||
+                    event.type == SDL_MOUSEWHEEL) {
                     const Uint32 eventWindowId = event.type == SDL_WINDOWEVENT ? event.window.windowID :
                         event.type == SDL_KEYDOWN ? event.key.windowID :
                         event.type == SDL_TEXTINPUT ? event.text.windowID :
+                        event.type == SDL_TEXTEDITING ? event.edit.windowID :
                         event.wheel.windowID;
                     if (ManagedWindow* managed = findWindow(childWindows, eventWindowId)) {
                         processManagedEvent(*managed, event);
@@ -507,10 +522,12 @@ int main() {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_WINDOWEVENT || event.type == SDL_KEYDOWN ||
-                event.type == SDL_TEXTINPUT || event.type == SDL_MOUSEWHEEL) {
+                event.type == SDL_TEXTINPUT || event.type == SDL_TEXTEDITING ||
+                event.type == SDL_MOUSEWHEEL) {
                 const Uint32 eventWindowId = event.type == SDL_WINDOWEVENT ? event.window.windowID :
                     event.type == SDL_KEYDOWN ? event.key.windowID :
                     event.type == SDL_TEXTINPUT ? event.text.windowID :
+                    event.type == SDL_TEXTEDITING ? event.edit.windowID :
                     event.wheel.windowID;
                 if (ManagedWindow* managed = findWindow(childWindows, eventWindowId)) {
                     processManagedEvent(*managed, event);

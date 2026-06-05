@@ -44,6 +44,7 @@ struct KeyboardEvent {
     bool redo = false;
     bool shift = false;
     bool escape = false;
+    bool composing = false;
 
     bool hasInput() const {
         return !text.empty() || !pasteText.empty() || backspace || del || enter ||

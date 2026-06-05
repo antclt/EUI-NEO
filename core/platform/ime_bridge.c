@@ -58,6 +58,26 @@ void eui_ime_set_cursor_rect(GLFWwindow* window, double x, double y, double widt
     ImmReleaseContext(hwnd, context);
 }
 
+int eui_ime_is_composing(GLFWwindow* window) {
+    if (window == 0) {
+        return 0;
+    }
+
+    HWND hwnd = glfwGetWin32Window(window);
+    if (hwnd == 0) {
+        return 0;
+    }
+
+    HIMC context = ImmGetContext(hwnd);
+    if (context == 0) {
+        return 0;
+    }
+
+    const LONG length = ImmGetCompositionStringW(context, GCS_COMPSTR, 0, 0);
+    ImmReleaseContext(hwnd, context);
+    return length > 0 ? 1 : 0;
+}
+
 #elif defined(__APPLE__)
 #define GLFW_EXPOSE_NATIVE_COCOA
 #include <GLFW/glfw3native.h>
@@ -137,6 +157,25 @@ void eui_ime_set_cursor_rect(GLFWwindow* window, double x, double y, double widt
     objc_setAssociatedObject(view, &euiImeRectKey, [NSValue valueWithRect:viewRect], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
+int eui_ime_is_composing(GLFWwindow* window) {
+    if (window == 0) {
+        return 0;
+    }
+
+    NSWindow* nsWindow = glfwGetCocoaWindow(window);
+    if (nsWindow == nil) {
+        return 0;
+    }
+
+    NSView* view = [nsWindow contentView];
+    if (view == nil || ![view respondsToSelector:@selector(markedRange)]) {
+        return 0;
+    }
+
+    NSRange markedRange = [(id)view markedRange];
+    return markedRange.location != NSNotFound && markedRange.length > 0 ? 1 : 0;
+}
+
 #else
 
 void eui_ime_set_cursor_rect(GLFWwindow* window, double x, double y, double width, double height) {
@@ -145,6 +184,11 @@ void eui_ime_set_cursor_rect(GLFWwindow* window, double x, double y, double widt
     (void)y;
     (void)width;
     (void)height;
+}
+
+int eui_ime_is_composing(GLFWwindow* window) {
+    (void)window;
+    return 0;
 }
 
 #endif

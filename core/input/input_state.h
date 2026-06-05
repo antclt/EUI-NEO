@@ -4,6 +4,8 @@
 #include "core/window/window_backend.h"
 
 #if !defined(EUI_WINDOW_BACKEND_SDL2)
+#include "core/platform/ime_bridge.h"
+
 #ifndef GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_NONE
 #endif
@@ -57,12 +59,26 @@ inline std::unordered_map<window::Handle, PointerState>& pointerStates() {
     return states;
 }
 
+inline std::unordered_map<window::Handle, bool>& composingStates() {
+    static std::unordered_map<window::Handle, bool> states;
+    return states;
+}
+
 inline InputQueue& inputQueue(window::Handle window) {
     return inputQueues()[window];
 }
 
 inline PointerState& pointerState(window::Handle window) {
     return pointerStates()[window];
+}
+
+inline bool isComposing(window::Handle window) {
+    const auto it = composingStates().find(window);
+    return it != composingStates().end() && it->second;
+}
+
+inline void setComposing(window::Handle window, bool composing) {
+    composingStates()[window] = composing;
 }
 
 inline void appendUtf8(std::string& output, unsigned int codepoint) {
@@ -89,7 +105,13 @@ inline void appendUtf8(std::string& output, unsigned int codepoint) {
 } // namespace detail
 
 inline void queueTextInput(window::Handle window, const std::string& text) {
-    detail::inputQueue(window).text += text;
+    detail::InputQueue& queue = detail::inputQueue(window);
+    queue.text += text;
+    detail::setComposing(window, false);
+}
+
+inline void queueTextEditing(window::Handle window, const std::string& text) {
+    detail::setComposing(window, !text.empty());
 }
 
 inline void queueScrollInput(window::Handle window, double x, double y) {
@@ -126,6 +148,10 @@ inline void queueKeyInput(window::Handle window, InputKey key, bool ctrl = false
         return;
     }
 
+    if (detail::isComposing(window) && (key == InputKey::Backspace || key == InputKey::Delete)) {
+        return;
+    }
+
     switch (key) {
     case InputKey::Backspace: queue.backspace = true; break;
     case InputKey::Delete: queue.del = true; break;
@@ -149,7 +175,9 @@ inline void installInputCallbacks(window::Handle window) {
 #if !defined(EUI_WINDOW_BACKEND_SDL2)
     GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(window);
     glfwSetCharCallback(glfwWindow, [](GLFWwindow* currentWindow, unsigned int codepoint) {
-        detail::appendUtf8(detail::inputQueue(currentWindow).text, codepoint);
+        detail::InputQueue& queue = detail::inputQueue(currentWindow);
+        detail::appendUtf8(queue.text, codepoint);
+        detail::setComposing(currentWindow, false);
     });
 
     glfwSetScrollCallback(glfwWindow, [](GLFWwindow* currentWindow, double xoffset, double yoffset) {
@@ -163,6 +191,7 @@ inline void installInputCallbacks(window::Handle window) {
 
         const bool ctrl = (mods & GLFW_MOD_CONTROL) != 0 || (mods & GLFW_MOD_SUPER) != 0;
         const bool shift = (mods & GLFW_MOD_SHIFT) != 0;
+        detail::setComposing(currentWindow, eui_ime_is_composing(currentWindow) != 0);
         switch (key) {
         case GLFW_KEY_BACKSPACE: queueKeyInput(currentWindow, InputKey::Backspace, ctrl, shift); break;
         case GLFW_KEY_DELETE: queueKeyInput(currentWindow, InputKey::Delete, ctrl, shift); break;
@@ -209,6 +238,7 @@ inline std::pair<KeyboardEvent, ScrollEvent> consumeInputEvents(window::Handle w
     keyboard.redo = queue.redo;
     keyboard.shift = queue.shift;
     keyboard.escape = queue.escape;
+    keyboard.composing = detail::isComposing(window);
 
     ScrollEvent scroll{queue.scrollX, queue.scrollY};
     queue = {};
@@ -218,6 +248,7 @@ inline std::pair<KeyboardEvent, ScrollEvent> consumeInputEvents(window::Handle w
 inline void releaseInputQueue(window::Handle window) {
     detail::inputQueues().erase(window);
     detail::pointerStates().erase(window);
+    detail::composingStates().erase(window);
 }
 
 inline PointerEvent readPointerEvent(window::Handle window, float dpiScale = 1.0f) {
