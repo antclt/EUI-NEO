@@ -160,6 +160,10 @@ struct Element {
     std::string scrollContentSourceId;
     std::string scrollDragSourceId;
     std::string scrollThumbSourceId;
+    std::string sliderStateId;
+    std::string sliderInputSourceId;
+    std::string sliderFillSourceId;
+    std::string sliderKnobSourceId;
     float pressedScale = 1.0f;
     float hoverHiddenOpacity = 0.0f;
     float hoverVisibleOpacity = 1.0f;
@@ -170,6 +174,10 @@ struct Element {
     float scrollStep = 48.0f;
     float scrollDragTravel = 0.0f;
     float scrollThumbTravel = 0.0f;
+    float sliderValue = 0.0f;
+    float sliderWidth = 0.0f;
+    float sliderKnobSize = 0.0f;
+    std::function<void(float)> onSliderValueChanged;
     Transition transition;
     bool explicitFrameAnimation = false;
     std::string dirtyKey;
@@ -652,6 +660,14 @@ public:
     Derived& scrollContentFrom(const std::string& id);
     Derived& scrollDragFrom(const std::string& id, float travel);
     Derived& scrollThumbFrom(const std::string& id, float travel);
+    Derived& sliderState(const std::string& id,
+                         float value,
+                         float width,
+                         float knobSize,
+                         std::function<void(float)> callback = {});
+    Derived& sliderInputFrom(const std::string& id);
+    Derived& sliderFillFrom(const std::string& id);
+    Derived& sliderKnobFrom(const std::string& id);
 
     Derived& transition(const Transition& value) {
         element_->transition = value;
@@ -1412,6 +1428,39 @@ template <typename Derived>
 Derived& BuilderBase<Derived>::scrollThumbFrom(const std::string& id, float travel) {
     element_->scrollThumbSourceId = ui_->resolveId(id);
     element_->scrollThumbTravel = std::max(0.0f, travel);
+    return self();
+}
+
+template <typename Derived>
+Derived& BuilderBase<Derived>::sliderState(const std::string& id,
+                                           float value,
+                                           float width,
+                                           float knobSize,
+                                           std::function<void(float)> callback) {
+    element_->sliderStateId = ui_->resolveId(id);
+    element_->sliderValue = std::clamp(value, 0.0f, 1.0f);
+    element_->sliderWidth = std::max(0.0f, width);
+    element_->sliderKnobSize = std::max(0.0f, knobSize);
+    element_->onSliderValueChanged = std::move(callback);
+    return self();
+}
+
+template <typename Derived>
+Derived& BuilderBase<Derived>::sliderInputFrom(const std::string& id) {
+    element_->sliderInputSourceId = ui_->resolveId(id);
+    element_->interactive = true;
+    return self();
+}
+
+template <typename Derived>
+Derived& BuilderBase<Derived>::sliderFillFrom(const std::string& id) {
+    element_->sliderFillSourceId = ui_->resolveId(id);
+    return self();
+}
+
+template <typename Derived>
+Derived& BuilderBase<Derived>::sliderKnobFrom(const std::string& id) {
+    element_->sliderKnobSourceId = ui_->resolveId(id);
     return self();
 }
 

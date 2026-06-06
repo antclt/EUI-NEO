@@ -224,6 +224,7 @@ public:
         dirtyKeys_.clear();
         layouts_.clear();
         scrollStates_.clear();
+        sliderStates_.clear();
         timers_.clear();
         dependentVisualStates_.clear();
         frameTargets_.clear();
@@ -359,6 +360,17 @@ private:
         Rect dirtyRect;
         bool hasDirtyRect = false;
         bool initialized = false;
+        bool seen = false;
+    };
+
+    struct SliderStateInstance {
+        float value = 0.0f;
+        float width = 0.0f;
+        float knobSize = 0.0f;
+        Rect dirtyRect;
+        bool hasDirtyRect = false;
+        bool initialized = false;
+        bool dragging = false;
         bool seen = false;
     };
 
@@ -923,12 +935,28 @@ private:
         return transform;
     }
 
+    Transform sliderTransformForElement(const Element& element, Transform transform = {}) const {
+        if (!element.sliderKnobSourceId.empty()) {
+            const auto state = sliderStates_.find(element.sliderKnobSourceId);
+            if (state != sliderStates_.end()) {
+                const float travel = std::max(0.0f, state->second.width - state->second.knobSize);
+                const float centered = std::clamp(state->second.width * state->second.value - state->second.knobSize * 0.5f,
+                                                  0.0f,
+                                                  travel);
+                transform.translate.x += centered;
+            }
+        }
+        return transform;
+    }
+
     Transform runtimeTransformForElement(const Element& element, const Transform& base) const {
-        return scrollTransformForElement(element, base);
+        return sliderTransformForElement(element, scrollTransformForElement(element, base));
     }
 
     static bool usesRuntimeTransform(const Element& element) {
-        return !element.scrollContentSourceId.empty() || !element.scrollThumbSourceId.empty();
+        return !element.scrollContentSourceId.empty() ||
+               !element.scrollThumbSourceId.empty() ||
+               !element.sliderKnobSourceId.empty();
     }
 
     static TransformMatrix combinedPrimitiveMatrix(const RenderTransform& renderTransform,
@@ -1174,6 +1202,12 @@ private:
         return instance;
     }
 
+    SliderStateInstance& sliderStateInstance(const std::string& id) {
+        SliderStateInstance& instance = sliderStates_.try_emplace(id).first->second;
+        instance.seen = true;
+        return instance;
+    }
+
     TimerInstance& timerInstance(const std::string& id) {
         return timers_.try_emplace(id).first->second;
     }
@@ -1206,6 +1240,7 @@ private:
         markEntriesUnseen(dirtyKeys_);
         markEntriesUnseen(layouts_);
         markEntriesUnseen(scrollStates_);
+        markEntriesUnseen(sliderStates_);
         markEntriesUnseen(frameTargets_);
     }
 
@@ -1226,6 +1261,7 @@ private:
         releaseUnseenEntries(dirtyKeys_, noop);
         releaseUnseenEntries(layouts_, noop);
         releaseUnseenEntries(scrollStates_, noop);
+        releaseUnseenEntries(sliderStates_, noop);
         releaseUnseenEntries(frameTargets_, noop);
     }
 
@@ -1548,6 +1584,12 @@ private:
             needsRender_ = true;
         }
 
+        if (enabled && instance.state.pressStarted && !element.sliderInputSourceId.empty()) {
+            updateRuntimeSlider(element, event.x, dpiScale, true);
+            needsRender_ = true;
+            return;
+        }
+
         if (enabled && instance.state.pressStarted && element.onPress) {
             element.onPress(event, bounds);
             needsCompose_ = true;
@@ -1565,9 +1607,24 @@ private:
             needsRender_ = true;
         }
 
+        if (enabled && instance.state.released && !element.sliderInputSourceId.empty()) {
+            if (auto state = sliderStates_.find(element.sliderInputSourceId); state != sliderStates_.end()) {
+                state->second.dragging = false;
+            }
+            needsCompose_ = true;
+            needsRender_ = true;
+            return;
+        }
+
         if (enabled && instance.state.pressed && !element.scrollDragSourceId.empty() &&
             (event.deltaX != 0.0 || event.deltaY != 0.0 || instance.state.drag)) {
             updateRuntimeScrollDrag(element, instance.state.dragDeltaY, dpiScale);
+            return;
+        }
+
+        if (enabled && instance.state.pressed && !element.sliderInputSourceId.empty() &&
+            (event.deltaX != 0.0 || event.deltaY != 0.0 || instance.state.drag)) {
+            updateRuntimeSlider(element, event.x, dpiScale, true);
             return;
         }
 
@@ -1786,8 +1843,16 @@ private:
             instance.gradient = element.gradient;
         }
 
+        LayoutRect targetFrame = element.frame;
+        if (!element.sliderFillSourceId.empty()) {
+            const auto state = sliderStates_.find(element.sliderFillSourceId);
+            if (state != sliderStates_.end()) {
+                targetFrame.width = std::max(0.0f, state->second.width * state->second.value);
+            }
+        }
+
         bool changed = hoverChanged || pressChanged || gradientChanged;
-        changed = instance.frame.setTarget(element.frame, element.transition, !snapFrame && shouldAnimateFrame(element)) || changed;
+        changed = instance.frame.setTarget(targetFrame, element.transition, !snapFrame && shouldAnimateFrame(element)) || changed;
         changed = instance.color.setTarget(currentColor, element.transition, shouldAnimate(element, AnimProperty::Color)) || changed;
         changed = instance.radius.setTarget(element.radius, element.transition, shouldAnimate(element, AnimProperty::Radius)) || changed;
         changed = instance.blur.setTarget(element.blur, element.transition, shouldAnimate(element, AnimProperty::Blur)) || changed;
@@ -2165,6 +2230,10 @@ private:
         return !element.scrollStateId.empty() && element.id == element.scrollStateId;
     }
 
+    static bool ownsSliderState(const Element& element) {
+        return !element.sliderStateId.empty() && element.id == element.sliderStateId;
+    }
+
     void syncScrollStateElement(const Element& element) {
         if (element.scrollStateId.empty()) {
             return;
@@ -2187,9 +2256,30 @@ private:
         }
     }
 
+    void syncSliderStateElement(const Element& element) {
+        if (element.sliderStateId.empty()) {
+            return;
+        }
+
+        SliderStateInstance& instance = sliderStateInstance(element.sliderStateId);
+        if (!ownsSliderState(element)) {
+            return;
+        }
+
+        instance.width = std::max(0.0f, element.sliderWidth);
+        instance.knobSize = std::max(0.0f, element.sliderKnobSize);
+        instance.dirtyRect = {element.frame.x, element.frame.y, element.frame.width, element.frame.height};
+        instance.hasDirtyRect = true;
+        if (!instance.initialized || !instance.dragging) {
+            instance.value = std::clamp(element.sliderValue, 0.0f, 1.0f);
+            instance.initialized = true;
+        }
+    }
+
     void syncScrollStateBindings() {
         forEachElement([&](const Element& element) {
             syncScrollStateElement(element);
+            syncSliderStateElement(element);
         });
     }
 
@@ -2202,6 +2292,12 @@ private:
     }
 
     void addScrollDirtyRect(const ScrollStateInstance& instance) {
+        if (instance.hasDirtyRect) {
+            addDirtyRect(instance.dirtyRect);
+        }
+    }
+
+    void addSliderDirtyRect(const SliderStateInstance& instance) {
         if (instance.hasDirtyRect) {
             addDirtyRect(instance.dirtyRect);
         }
@@ -2262,6 +2358,56 @@ private:
         const float next = state->second.dragStartOffset +
                            logicalDeltaY * (state->second.maxOffset / element.scrollDragTravel);
         setScrollOffset(element.scrollDragSourceId, next);
+    }
+
+    float sliderValueFromPointer(const Element& element, double pointerX, float dpiScale) const {
+        if (element.sliderInputSourceId.empty()) {
+            return 0.0f;
+        }
+        const auto state = sliderStates_.find(element.sliderInputSourceId);
+        if (state == sliderStates_.end()) {
+            return 0.0f;
+        }
+
+        const Element* owner = ui_.find(element.sliderInputSourceId);
+        if (owner == nullptr) {
+            return 0.0f;
+        }
+
+        const Rect bounds = toPixelRect(owner->frame, dpiScale);
+        const float localX = static_cast<float>(pointerX - bounds.x);
+        return std::clamp(localX / std::max(1.0f, bounds.width), 0.0f, 1.0f);
+    }
+
+    void setSliderValue(const std::string& stateId, float value, bool dragging) {
+        auto state = sliderStates_.find(stateId);
+        if (state == sliderStates_.end()) {
+            return;
+        }
+
+        SliderStateInstance& instance = state->second;
+        const float next = std::clamp(value, 0.0f, 1.0f);
+        const bool changed = !closeEnough(next, instance.value);
+        instance.dragging = dragging;
+        if (!changed) {
+            return;
+        }
+
+        instance.value = next;
+        addSliderDirtyRect(instance);
+        needsRender_ = true;
+        if (const Element* owner = ui_.find(stateId)) {
+            if (owner->onSliderValueChanged && !owner->disabled) {
+                owner->onSliderValueChanged(instance.value);
+            }
+        }
+    }
+
+    void updateRuntimeSlider(const Element& element, double pointerX, float dpiScale, bool dragging) {
+        if (element.sliderInputSourceId.empty()) {
+            return;
+        }
+        setSliderValue(element.sliderInputSourceId, sliderValueFromPointer(element, pointerX, dpiScale), dragging);
     }
 
     std::vector<Rect> resolveDirtyRects(int windowWidth, int windowHeight, float dpiScale) const {
@@ -2639,6 +2785,7 @@ private:
     std::unordered_map<std::string, DirtyKeyInstance> dirtyKeys_;
     std::unordered_map<std::string, LayoutInstance> layouts_;
     std::unordered_map<std::string, ScrollStateInstance> scrollStates_;
+    std::unordered_map<std::string, SliderStateInstance> sliderStates_;
     std::unordered_map<std::string, TimerInstance> timers_;
     std::unordered_map<std::string, DependentVisualState> dependentVisualStates_;
     std::unordered_map<std::string, FrameTargetInstance> frameTargets_;
