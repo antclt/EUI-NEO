@@ -37,11 +37,13 @@ Do not bulk-load all docs unless the task truly spans multiple layers.
 
 Write EUI-NEO in this direction:
 
-1. App/page state lives in `examples/*.cpp`, usually in an anonymous namespace.
-2. `compose(eui::Ui& ui, const eui::Screen& screen)` declares the whole page from current state.
-3. Components only compose DSL trees and emit callbacks with next values.
-4. `core::dsl::Runtime` handles layout, hit-testing, focus, animation, dirty rects, and primitive sync.
-5. Callbacks mutate page state, then Runtime decides whether to re-compose and re-render.
+1. Small app/page state can live in `examples/*.cpp`, usually in an anonymous namespace.
+2. For larger examples, prefer the `gallery` shape: keep the app shell and routing in `examples/gallery.cpp`, then put page objects in `examples/pages/*.h`.
+3. A page object owns its own interaction state and exposes `compose(eui::Ui&, float width, float height)`, similar to a QML page component.
+4. `compose(eui::Ui& ui, const eui::Screen& screen)` declares the shell from current state and routes into page objects.
+5. Components only compose DSL trees and emit callbacks with next values.
+6. `core::dsl::Runtime` handles layout, hit-testing, focus, animation, dirty rects, and primitive sync.
+7. Callbacks mutate page state, then Runtime decides whether to re-compose and re-render.
 
 Do not write code as if this were an immediate-mode raw GPU app. The DSL is the source of truth.
 
@@ -64,6 +66,7 @@ Do not write code as if this were an immediate-mode raw GPU app. The DSL is the 
 - `include/eui/app.h`: app lifecycle interface used by `core/app/glfw_app_main.cpp`
 - `include/eui/dsl_app.h`: recommended app adapter and helpers like `openWindow(...)` and `app::async`
 - `examples/*.cpp`: each file is a standalone executable target
+- `examples/pages/*.h`: gallery-style page component headers included by an example shell
 - `components/components.h`: aggregate export for component layer
 - `components/theme.h`: theme tokens and visual helpers
 - `core/dsl.h`: DSL builders and shared element properties
@@ -107,8 +110,8 @@ Rules:
 
 - `pageId` must be stable.
 - Use `screen.width` and `screen.height` as logical size, not framebuffer pixel size.
-- Put mutable page state in an anonymous namespace in the same `examples/*.cpp`.
-- Let callbacks mutate that state directly.
+- For small pages, put mutable page state in an anonymous namespace in the same `examples/*.cpp`.
+- For large pages, use the `gallery` pattern: create a page object under `examples/pages/*.h`, keep page-local state as members, and let callbacks mutate `this` state directly.
 - Use `components::theme` tokens when the page needs a coherent visual system.
 - Prefer layout-first page composition: build sections with `row`, `column`, `stack`, `gap`, `margin`, `align`, `fill`, and `wrapContent` before reaching for manual `.x(...)` / `.y(...)` math.
 - Prefer `flow`, `padding`, `min/max`, and `flex` before introducing manual width formulas for responsive groups.
