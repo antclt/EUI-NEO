@@ -410,7 +410,8 @@ void composeContent(eui::Ui& ui, float width, float height) {
                     ui.stack("page.body")
                         .size(innerWidth, bodyHeight)
                         .content([&] {
-                            components::scrollView(ui, "page.body.scrollview")
+                            const std::string scrollId = "page.body.scrollview." + std::to_string(page);
+                            components::scrollView(ui, scrollId)
                                 .theme(themeColors())
                                 .size(innerWidth, bodyHeight)
                                 .offset(pageScroll[page])

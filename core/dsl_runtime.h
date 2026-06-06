@@ -624,24 +624,23 @@ private:
         }
 
         const float perspective = std::max(1.0f, transform.perspective);
-        const float tx = transform.translate.x;
-        const float ty = transform.translate.y;
         const float tz = transform.translateZ;
         const float nxDx = perspective * ax - origin.x * az;
         const float nxDy = perspective * bx - origin.x * bz;
         const float nyDx = perspective * ay - origin.y * az;
         const float nyDy = perspective * by - origin.y * bz;
+        const float denominator = perspective - tz + az * origin.x + bz * origin.y;
 
         return {
-            nxDx,
-            nxDy,
-            perspective * (origin.x + tx) - origin.x * tz - nxDx * origin.x - nxDy * origin.y,
-            nyDx,
-            nyDy,
-            perspective * (origin.y + ty) - origin.y * tz - nyDx * origin.x - nyDy * origin.y,
+            nxDx + transform.translate.x * -az,
+            nxDy + transform.translate.x * -bz,
+            perspective * origin.x - origin.x * tz - nxDx * origin.x - nxDy * origin.y + transform.translate.x * denominator,
+            nyDx + transform.translate.y * -az,
+            nyDy + transform.translate.y * -bz,
+            perspective * origin.y - origin.y * tz - nyDx * origin.x - nyDy * origin.y + transform.translate.y * denominator,
             -az,
             -bz,
-            perspective - tz + az * origin.x + bz * origin.y
+            denominator
         };
     }
 
