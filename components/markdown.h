@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -768,7 +769,7 @@ public:
     MarkdownBuilder& z(int value) { return zIndex(value); }
 
     void build() {
-        const std::vector<detail::MarkdownBlock> blocks = detail::parseMarkdownBlocks(markdown_);
+        const std::vector<detail::MarkdownBlock>& blocks = parsedBlocks();
         auto root = ui_.column(id_)
             .width(width_)
             .height(height_)
@@ -799,6 +800,22 @@ public:
     }
 
 private:
+    struct ParseCache {
+        std::string markdown;
+        std::vector<detail::MarkdownBlock> blocks;
+        bool valid = false;
+    };
+
+    const std::vector<detail::MarkdownBlock>& parsedBlocks() {
+        ParseCache& cache = ui_.state<ParseCache>(id_ + ".parse");
+        if (!cache.valid || cache.markdown != markdown_) {
+            cache.markdown = markdown_;
+            cache.blocks = detail::parseMarkdownBlocks(markdown_);
+            cache.valid = true;
+        }
+        return cache.blocks;
+    }
+
     static bool runIsChip(const detail::MarkdownRun& run) {
         return run.kind == detail::MarkdownRunKind::InlineCode ||
                run.kind == detail::MarkdownRunKind::Image ||
@@ -834,6 +851,49 @@ private:
         float width = 0.0f;
         bool chip = false;
     };
+
+    struct InlineLayoutEntry {
+        std::vector<InlineSegment> segments;
+        float measuredHeight = 0.0f;
+    };
+
+    struct InlineLayoutCache {
+        std::unordered_map<std::string, InlineLayoutEntry> entries;
+    };
+
+    static std::string inlineLayoutKey(const std::string& partId,
+                                       const std::vector<detail::MarkdownRun>& runs,
+                                       float width,
+                                       float fontSize,
+                                       float lineHeight,
+                                       bool heading,
+                                       core::HorizontalAlign align,
+                                       const MarkdownStyle& style) {
+        std::string key = partId;
+        key += "|w=" + std::to_string(static_cast<int>(width * 10.0f + 0.5f));
+        key += "|fs=" + std::to_string(static_cast<int>(fontSize * 10.0f + 0.5f));
+        key += "|lh=" + std::to_string(static_cast<int>(lineHeight * 10.0f + 0.5f));
+        key += heading ? "|h=1" : "|h=0";
+        key += "|a=" + std::to_string(static_cast<int>(align));
+        key += "|font=" + style.fontFamily;
+        key += "|code=" + style.codeFontFamily;
+        for (const detail::MarkdownRun& run : runs) {
+            key += "|";
+            key += std::to_string(static_cast<int>(run.kind));
+            key += run.style.emphasis ? "e" : "";
+            key += run.style.strong ? "s" : "";
+            key += run.style.deleted ? "d" : "";
+            key += run.style.underline ? "u" : "";
+            key += run.style.link ? "l" : "";
+            key += run.style.image ? "i" : "";
+            key += run.style.math ? "m" : "";
+            key += run.style.wiki ? "w" : "";
+            key += run.style.html ? "h" : "";
+            key += ":";
+            key += detail::displayText(run);
+        }
+        return key;
+    }
 
     static std::vector<InlineSegment> layoutInlineRunsWithStyle(const std::vector<detail::MarkdownRun>& runs,
                                                                 float width,
@@ -928,6 +988,32 @@ private:
 
         outHeight = segments.empty() ? lineHeight : cursorY + lineHeight;
         return segments;
+    }
+
+    const InlineLayoutEntry& cachedInlineLayout(const std::string& partId,
+                                                const std::vector<detail::MarkdownRun>& runs,
+                                                float width,
+                                                float fontSize,
+                                                float lineHeight,
+                                                bool heading,
+                                                core::HorizontalAlign align) {
+        InlineLayoutCache& cache = ui_.state<InlineLayoutCache>(id_ + ".inlineLayout");
+        const std::string key = inlineLayoutKey(partId, runs, width, fontSize, lineHeight, heading, align, style_);
+        const auto existing = cache.entries.find(key);
+        if (existing != cache.entries.end()) {
+            return existing->second;
+        }
+
+        if (cache.entries.size() >= 256) {
+            cache.entries.clear();
+        }
+
+        InlineLayoutEntry entry;
+        entry.measuredHeight = lineHeight;
+        entry.segments = layoutInlineRunsWithStyle(runs, width, fontSize, lineHeight, heading, style_, entry.measuredHeight);
+        alignInlineSegments(entry.segments, width, align);
+        const auto inserted = cache.entries.emplace(key, std::move(entry));
+        return inserted.first->second;
     }
 
     static float estimateInlineRunsHeight(const std::vector<detail::MarkdownRun>& runs,
@@ -1059,7 +1145,13 @@ private:
                         float contentWidth) {
         const float markerWidth = block.task ? 34.0f : 24.0f;
         const float textWidth = std::max(0.0f, contentWidth - markerWidth - 8.0f);
-        const float height = std::max(style_.bodyLineHeight, inlineRunsHeight(block.runs, textWidth, style_.bodySize, style_.bodyLineHeight, false));
+        const float height = std::max(style_.bodyLineHeight,
+                                      inlineRunsHeight(partId + ".text",
+                                                       block.runs,
+                                                       textWidth,
+                                                       style_.bodySize,
+                                                       style_.bodyLineHeight,
+                                                       false));
         ui_.stack(partId)
             .width(contentWidth)
             .height(height)
@@ -1088,7 +1180,7 @@ private:
                            float fontSize,
                            float lineHeight,
                            bool heading) {
-        const float blockHeight = inlineRunsHeight(block.runs, contentWidth, fontSize, lineHeight, heading);
+        const float blockHeight = inlineRunsHeight(partId + ".text", block.runs, contentWidth, fontSize, lineHeight, heading);
         if (block.quoteDepth > 0) {
             const float barWidth = 3.0f;
             const float barGap = 8.0f;
@@ -1096,7 +1188,7 @@ private:
             const float panelWidth = std::max(0.0f, contentWidth - panelX);
             const float textX = panelX + style_.quotePadding;
             const float textWidth = std::max(0.0f, panelWidth - style_.quotePadding * 2.0f);
-            const float textHeight = inlineRunsHeight(block.runs, textWidth, fontSize, lineHeight, heading);
+            const float textHeight = inlineRunsHeight(partId + ".text", block.runs, textWidth, fontSize, lineHeight, heading);
             const float height = textHeight + style_.quotePadding * 2.0f;
             ui_.stack(partId)
                 .width(contentWidth)
@@ -1147,12 +1239,14 @@ private:
         return heading ? style_.heading : style_.text;
     }
 
-    float inlineRunsHeight(const std::vector<detail::MarkdownRun>& runs,
+    float inlineRunsHeight(const std::string& partId,
+                           const std::vector<detail::MarkdownRun>& runs,
                            float width,
                            float fontSize,
                            float lineHeight,
-                           bool heading) const {
-        return estimateInlineRunsHeight(runs, width, fontSize, lineHeight, heading, style_);
+                           bool heading,
+                           core::HorizontalAlign align = core::HorizontalAlign::Left) {
+        return cachedInlineLayout(partId, runs, width, fontSize, lineHeight, heading, align).measuredHeight;
     }
 
     void renderInlineRuns(const std::string& partId,
@@ -1165,15 +1259,13 @@ private:
                           float x = 0.0f,
                           float y = 0.0f,
                           core::HorizontalAlign align = core::HorizontalAlign::Left) {
-        float measuredHeight = lineHeight;
-        std::vector<InlineSegment> segments = layoutInlineRunsWithStyle(runs, width, fontSize, lineHeight, heading, style_, measuredHeight);
-        alignInlineSegments(segments, width, align);
+        const InlineLayoutEntry& layout = cachedInlineLayout(partId, runs, width, fontSize, lineHeight, heading, align);
         ui_.stack(partId)
             .position(x, y)
             .size(width, height)
             .content([&] {
-                for (std::size_t index = 0; index < segments.size(); ++index) {
-                    renderInlineSegment(partId + ".seg." + std::to_string(index), segments[index], fontSize, lineHeight, heading);
+                for (std::size_t index = 0; index < layout.segments.size(); ++index) {
+                    renderInlineSegment(partId + ".seg." + std::to_string(index), layout.segments[index], fontSize, lineHeight, heading);
                 }
             })
             .build();
@@ -1335,7 +1427,7 @@ private:
         float tableHeight = 0.0f;
 
         for (std::size_t row = begin; row < end; ++row) {
-            tableHeight += tableRowHeight(blocks[row], contentWidth);
+            tableHeight += tableRowHeight(tableId + ".row." + std::to_string(row - begin), blocks[row], contentWidth);
         }
 
         ui_.column(tableId)
@@ -1351,8 +1443,30 @@ private:
             .build();
     }
 
-    float tableRowHeight(const detail::MarkdownBlock& block, float contentWidth) const {
-        return estimateTableRowHeight(block, contentWidth, style_);
+    float tableRowHeight(const std::string& partId,
+                         const detail::MarkdownBlock& block,
+                         float contentWidth) {
+        const std::size_t cellCount = std::max<std::size_t>(1, block.cells.size());
+        const float cellWidth = contentWidth / static_cast<float>(cellCount);
+        const float textWidth = std::max(0.0f, cellWidth - style_.tableCellPadding * 2.0f);
+        const std::vector<detail::MarkdownRun> emptyRuns;
+        float height = 0.0f;
+        for (std::size_t cell = 0; cell < cellCount; ++cell) {
+            const bool hasCell = cell < block.cells.size();
+            const std::vector<detail::MarkdownRun>& runs = hasCell ? block.cells[cell].runs : emptyRuns;
+            const core::HorizontalAlign align = hasCell
+                ? detail::horizontalAlign(block.cells[cell].align)
+                : core::HorizontalAlign::Left;
+            height = std::max(height, inlineRunsHeight(
+                partId + ".cell." + std::to_string(cell) + ".text",
+                runs,
+                textWidth,
+                style_.bodySize,
+                style_.bodyLineHeight,
+                block.tableHeader,
+                align));
+        }
+        return height + style_.tableCellPadding * 2.0f;
     }
 
     void renderTableRow(const std::string& partId,
@@ -1360,7 +1474,7 @@ private:
                         float contentWidth) {
         const std::size_t cellCount = std::max<std::size_t>(1, block.cells.size());
         const float cellWidth = contentWidth / static_cast<float>(cellCount);
-        const float rowHeight = tableRowHeight(block, contentWidth);
+        const float rowHeight = tableRowHeight(partId, block, contentWidth);
         const core::Color fill = block.tableHeader
             ? theme::withOpacity(style_.accent, 0.16f)
             : style_.quoteBackground;
@@ -1396,7 +1510,8 @@ private:
                          float cellWidth,
                          float rowHeight) {
         const float textWidth = std::max(0.0f, cellWidth - style_.tableCellPadding * 2.0f);
-        const float textHeight = inlineRunsHeight(cell.runs, textWidth, style_.bodySize, style_.bodyLineHeight, false);
+        const core::HorizontalAlign align = detail::horizontalAlign(cell.align);
+        const float textHeight = inlineRunsHeight(partId, cell.runs, textWidth, style_.bodySize, style_.bodyLineHeight, header, align);
         float textX = style_.tableCellPadding;
         if (cell.align == detail::MarkdownAlign::Center) {
             textX = style_.tableCellPadding;
@@ -1411,10 +1526,10 @@ private:
                          textHeight,
                          style_.bodySize,
                          style_.bodyLineHeight,
-                         header,
-                         textX,
-                         textY,
-                         detail::horizontalAlign(cell.align));
+                          header,
+                          textX,
+                          textY,
+                         align);
     }
 
     core::dsl::Ui& ui_;

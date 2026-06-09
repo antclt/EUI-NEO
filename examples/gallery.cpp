@@ -445,12 +445,16 @@ void composeContent(eui::Ui& ui, float width, float height) {
                         .size(innerWidth, bodyHeight)
                         .content([&] {
                             const std::string scrollId = "page.body.scrollview." + std::to_string(page);
+                            const std::string scrollContentKey = page == 1
+                                ? std::string("style.") + (optionNight ? "dark" : "light") + "." + (optionDense ? "dense" : "regular")
+                                : "";
                             components::scrollView(ui, scrollId)
                                 .theme(themeColors())
                                 .size(innerWidth, bodyHeight)
                                 .offset(pageScroll[page])
                                 .gap(headerGap)
                                 .step(48.0f)
+                                .contentKey(scrollContentKey)
                                 .onChange([page](float value) {
                                     pageScroll[page] = value;
                                 })
