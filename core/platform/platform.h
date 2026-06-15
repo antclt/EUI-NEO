@@ -36,6 +36,7 @@ struct FileDialogResult {
     }
 };
 
+bool repairCurrentWorkingDirectory();
 bool openUrl(const std::string& url);
 FileDialogResult openFileDialog(const FileDialogOptions& options = {});
 std::string chooseFile(const FileDialogOptions& options = {});

@@ -423,6 +423,7 @@ bool updateManagedWindow(ManagedWindow& managed, float deltaSeconds, bool extern
 } // namespace
 
 int main() {
+    core::platform::repairCurrentWorkingDirectory();
     SDL_SetMainReady();
 #ifdef _WIN32
     SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");

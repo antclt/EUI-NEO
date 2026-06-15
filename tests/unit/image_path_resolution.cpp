@@ -1,4 +1,5 @@
 #include "core/render/image_source.h"
+#include "core/platform/platform.h"
 
 #include <filesystem>
 #include <iostream>
@@ -34,6 +35,11 @@ int main() {
 
     std::filesystem::remove_all(tempDir, error);
     error.clear();
+
+    if (!core::platform::repairCurrentWorkingDirectory()) {
+        std::cerr << "failed to repair deleted current directory\n";
+        return 1;
+    }
 
     bool pending = true;
     const std::string resolved = core::render::image::resolveImagePath("missing-image.png", &pending);
