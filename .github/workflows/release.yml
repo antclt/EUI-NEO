@@ -35,6 +35,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             ninja-build \
+            glslang-tools \
+            libvulkan-dev \
+            vulkan-tools \
             libx11-dev \
             libxrandr-dev \
             libxinerama-dev \
@@ -43,23 +46,51 @@ jobs:
             libgl1-mesa-dev \
             libcurl4-openssl-dev
 
+      - name: install macos deps
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: brew install glslang vulkan-headers vulkan-loader
+
+      - name: install windows deps
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          vcpkg install glslang:x64-windows-static
+          "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static/tools/glslang" | Out-File -FilePath $env:GITHUB_PATH -Append
+
       - name: configure windows
         if: matrix.platform == 'windows'
         shell: pwsh
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static -DEUI_BUILD_TEST_FIXTURES=ON
 
       - name: configure linux
         if: matrix.platform == 'linux'
         shell: bash
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGLFW_BUILD_WAYLAND=OFF -DGLFW_BUILD_X11=ON
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DEUI_BUILD_TEST_FIXTURES=ON -DGLFW_BUILD_WAYLAND=OFF -DGLFW_BUILD_X11=ON
 
       - name: configure macos
         if: matrix.platform == 'macos'
         shell: bash
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DEUI_BUILD_TEST_FIXTURES=ON
 
       - name: build
         run: cmake --build build --config Release --parallel
+
+      - name: check generated vulkan shaders
+        run: cmake --build build --config Release --target eui_check_vulkan_shaders --parallel
+
+      - name: run unit tests
+        run: ctest --test-dir build -C Release -L unit --output-on-failure
+
+      - name: install sdk
+        shell: bash
+        run: cmake --install build --config Release --prefix "$PWD/package-sdk"
+
+      - name: verify installed package
+        shell: bash
+        run: |
+          cmake -S tests/consumers/find-package -B package-consumer -DCMAKE_PREFIX_PATH="$PWD/package-sdk"
+          cmake --build package-consumer --config Release --parallel
 
       - name: package windows
         if: matrix.platform == 'windows'
@@ -69,7 +100,7 @@ jobs:
           $label = "${{ github.ref_name }}"
           $label = $label -replace '[^A-Za-z0-9._-]', '-'
           $arch = "${{ runner.arch }}".ToLowerInvariant()
-          $out = "dist/EUI-NEO-$label-windows-$arch.zip"
+          $out = "dist/EUI-NEO-$label-windows-$arch-runtime.zip"
           $binDir = "build/Release"
 
           $items = @()
@@ -79,6 +110,16 @@ jobs:
 
           Compress-Archive -Path $items.FullName -DestinationPath $out -Force
 
+      - name: package windows sdk
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $label = "${{ github.ref_name }}"
+          $label = $label -replace '[^A-Za-z0-9._-]', '-'
+          $arch = "${{ runner.arch }}".ToLowerInvariant()
+          $out = "dist/EUI-NEO-$label-windows-$arch-sdk.zip"
+          Compress-Archive -Path package-sdk/* -DestinationPath $out -Force
+
       - name: package unix
         if: matrix.platform == 'linux' || matrix.platform == 'macos'
         shell: bash
@@ -86,7 +127,7 @@ jobs:
           mkdir -p dist
           label="$(printf '%s' "${GITHUB_REF_NAME}" | tr -cs 'A-Za-z0-9._-' '-')"
           arch="$(printf '%s' "${RUNNER_ARCH:-X64}" | tr '[:upper:]' '[:lower:]')"
-          out="dist/EUI-NEO-${label}-${{ matrix.platform }}-${arch}.tar.gz"
+          out="dist/EUI-NEO-${label}-${{ matrix.platform }}-${arch}-runtime.tar.gz"
 
           files=()
           while IFS= read -r bin; do
@@ -102,6 +143,15 @@ jobs:
 
           tar -czf "$out" "${files[@]}"
 
+      - name: package unix sdk
+        if: matrix.platform == 'linux' || matrix.platform == 'macos'
+        shell: bash
+        run: |
+          label="$(printf '%s' "${GITHUB_REF_NAME}" | tr -cs 'A-Za-z0-9._-' '-')"
+          arch="$(printf '%s' "${RUNNER_ARCH:-X64}" | tr '[:upper:]' '[:lower:]')"
+          out="dist/EUI-NEO-${label}-${{ matrix.platform }}-${arch}-sdk.tar.gz"
+          tar -czf "$out" -C package-sdk .
+
       - name: upload workflow artifact
         uses: actions/upload-artifact@v6
         with:
@@ -116,7 +166,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $tag = "${{ github.ref_name }}"
-          $asset = (Get-ChildItem dist -Filter *.zip -File | Select-Object -First 1).FullName
           gh release view $tag | Out-Null
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --title $tag --notes ""
@@ -125,7 +174,9 @@ jobs:
               if ($LASTEXITCODE -ne 0) { throw "Failed to create or find release $tag." }
             }
           }
-          gh release upload $tag $asset --clobber
+          Get-ChildItem dist -Filter *.zip -File | ForEach-Object {
+            gh release upload $tag $_.FullName --clobber
+          }
 
       - name: upload unix release asset
         if: (matrix.platform == 'linux' || matrix.platform == 'macos') && startsWith(github.ref, 'refs/tags/')
@@ -134,6 +185,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="${GITHUB_REF_NAME}"
-          asset="$(find dist -maxdepth 1 -type f -name '*.tar.gz' | head -n 1)"
           gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" --title "$tag" --notes "" || gh release view "$tag" >/dev/null
-          gh release upload "$tag" "$asset" --clobber
+          find dist -maxdepth 1 -type f -name '*.tar.gz' -print0 | while IFS= read -r -d '' asset; do
+            gh release upload "$tag" "$asset" --clobber
+          done

@@ -22,10 +22,11 @@ bool optionGlass = false;
 bool optionMotion = true;
 bool optionUnlockFps = false;
 bool optionNight = true;
+float optionAnimationSpeed = 1.0f;
 eui::Color sampleColor = components::theme::defaultPrimary();
 bool workshopOpen = false;
 bool workshopHeartLiked = false;
-float pageScroll[6] = {};
+float pageScroll[7] = {};
 
 constexpr float kSidebarWidth = 272.0f;
 constexpr float kNavTop = 128.0f;
@@ -56,6 +57,24 @@ eui::Transition motionTransition() {
 
 double galleryFrameRateLimit() {
     return optionUnlockFps ? 0.0 : 90.0;
+}
+
+float animationSpeedFromSlider(float value) {
+    return 0.25f + std::clamp(value, 0.0f, 1.0f) * 2.25f;
+}
+
+float animationSpeedSliderValue() {
+    return std::clamp((optionAnimationSpeed - 0.25f) / 2.25f, 0.0f, 1.0f);
+}
+
+std::string animationSpeedText() {
+    char buffer[16] = {};
+    std::snprintf(buffer, sizeof(buffer), "%.2fx", optionAnimationSpeed);
+    return buffer;
+}
+
+void applyGlobalAnimationSpeed() {
+    core::setGlobalTransitionDurationScale(1.0f / std::max(0.05f, optionAnimationSpeed));
 }
 
 components::theme::ThemeColorTokens themeColors() {
@@ -127,13 +146,19 @@ eui::Color accent() {
 }
 
 int navOrderForPage(int page) {
-    if (page == 4) {
+    if (page == 6) {
         return 3;
     }
-    if (page == 3) {
+    if (page == 4) {
         return 4;
     }
-    return std::clamp(page, 0, 5);
+    if (page == 3) {
+        return 5;
+    }
+    if (page == 5) {
+        return 6;
+    }
+    return std::clamp(page, 0, 6);
 }
 
 const char* pageTitle() {
@@ -151,6 +176,9 @@ const char* pageTitle() {
     }
     if (selectedPage == 5) {
         return "About";
+    }
+    if (selectedPage == 6) {
+        return "Layout";
     }
     return "Controls";
 }
@@ -170,6 +198,9 @@ const char* pageSubtitle() {
     }
     if (selectedPage == 5) {
         return "A lightweight and elegant C++ GUI framework.";
+    }
+    if (selectedPage == 6) {
+        return "Rows, columns, stacks, padding, fill, wrapping, scrolling and loader modes.";
     }
     return "Basic controls, states and visual properties in one surface.";
 }
@@ -260,6 +291,7 @@ void composeSidebar(eui::Ui& ui, float height) {
                     navItem(ui, "nav.controls", "Controls", 0xF1B2, 0);
                     navItem(ui, "nav.text", "Style", 0xF1FC, 1);
                     navItem(ui, "nav.animation", "Animation", 0xF2F1, 2);
+                    navItem(ui, "nav.layout", "Layout", 0xF0DB, 6);
                     navItem(ui, "nav.bing", "Bing", 0xF1C5, 4);
                     navItem(ui, "nav.settings", "Settings", 0xF013, 3);
                     navItem(ui, "nav.about", "About", 0xF05A, 5);
@@ -304,6 +336,7 @@ std::string colorHex(eui::Color color) {
 #include "pages/gallery_controls.h"
 #include "pages/gallery_style.h"
 #include "pages/gallery_animation.h"
+#include "pages/gallery_layout.h"
 #include "pages/gallery_settings.h"
 #include "pages/gallery_bing.h"
 #include "pages/gallery_about.h"
@@ -311,6 +344,7 @@ std::string colorHex(eui::Color color) {
 GalleryControlsPage controlsPage;
 GalleryStylePage stylePage;
 GalleryAnimationPage animationPage;
+GalleryLayoutPage layoutPage;
 GallerySettingsPage settingsPage;
 GalleryBingPage bingPage;
 GalleryAboutPage aboutPage;
@@ -363,6 +397,14 @@ void composePageBody(eui::Ui& ui, float width, float height) {
             aboutPage.compose(ui, width, height);
         })
         .build();
+
+    ui.loader("pages.layout")
+        .active(selectedPage == 6)
+        .keepAlive()
+        .content([&] {
+            layoutPage.compose(ui, width, height);
+        })
+        .build();
 }
 
 void composeContent(eui::Ui& ui, float width, float height) {
@@ -372,7 +414,7 @@ void composeContent(eui::Ui& ui, float width, float height) {
     const float innerHeight = std::max(0.0f, shellHeight - 64.0f);
     const float headerGap = optionDense ? 18.0f : 26.0f;
     const float bodyHeight = std::max(0.0f, innerHeight - 46.0f - 30.0f - headerGap * 2.0f);
-    const int page = std::clamp(selectedPage, 0, 5);
+    const int page = std::clamp(selectedPage, 0, 6);
 
     ui.stack("content.area")
         .size(width, height)
@@ -510,6 +552,7 @@ const DslAppConfig& dslAppConfig() {
 }
 
 void compose(eui::Ui& ui, const eui::Screen& screen) {
+    applyGlobalAnimationSpeed();
     const float contentWidth = std::max(0.0f, screen.width - kSidebarWidth);
 
     ui.row("root")

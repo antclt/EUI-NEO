@@ -89,7 +89,7 @@ sudo apt-get install -y libsdl2-dev
 
 Top-level builds create one executable for each `examples/*.cpp` page source, such as `gallery` and `eui_demo`. After build, `assets/` is copied next to the executable automatically.
 
-Tagged releases (`v*`) build Windows, Linux, and macOS packages through GitHub Actions and upload only runtime packages as release assets.
+Tagged releases (`v*`) build Windows, Linux, and macOS packages through GitHub Actions and upload runtime and SDK packages as release assets.
 
 ## Use In Your Project
 

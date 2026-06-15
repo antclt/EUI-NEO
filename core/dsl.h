@@ -107,6 +107,7 @@ struct Element {
     float maxLayoutHeight = 0.0f;
     float flexGrow = 0.0f;
     float flexShrink = 0.0f;
+    bool ignoreLayout = false;
 
     Color color = {1.0f, 1.0f, 1.0f, 1.0f};
     Gradient gradient;
@@ -466,6 +467,15 @@ public:
         element_->flexGrow = std::max(0.0f, grow);
         element_->flexShrink = std::max(0.0f, shrink);
         return self();
+    }
+
+    Derived& ignoreLayout(bool value = true) {
+        element_->ignoreLayout = value;
+        return self();
+    }
+
+    Derived& overlay(bool value = true) {
+        return ignoreLayout(value);
     }
 
     Derived& zIndex(int value) {
@@ -1554,6 +1564,7 @@ private:
         node->setMaxHeight(element.maxLayoutHeight);
         node->setFlexGrow(element.flexGrow);
         node->setFlexShrink(element.flexShrink);
+        node->setIgnoreLayout(element.ignoreLayout);
 
         Node* raw = node.get();
         links.push_back({&element, raw});

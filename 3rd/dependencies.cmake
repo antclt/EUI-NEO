@@ -81,7 +81,8 @@ if(EUI_WINDOW_BACKEND STREQUAL "glfw")
 
     eui_begin_static_third_party_config()
     if(EUI_USE_BUNDLED_GLFW)
-        add_subdirectory("${EUI_THIRD_PARTY_DIR}/glfw" "${CMAKE_CURRENT_BINARY_DIR}/_deps/glfw-bundled-build" EXCLUDE_FROM_ALL)
+        set(EUI_GLFW_DIR "${EUI_THIRD_PARTY_DIR}/glfw")
+        add_subdirectory("${EUI_GLFW_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/glfw-bundled-build" EXCLUDE_FROM_ALL)
     else()
         FetchContent_Declare(
             glfw
@@ -91,6 +92,7 @@ if(EUI_WINDOW_BACKEND STREQUAL "glfw")
             TIMEOUT 30
         )
         FetchContent_MakeAvailable(glfw)
+        set(EUI_GLFW_DIR "${glfw_SOURCE_DIR}")
     endif()
     eui_end_static_third_party_config()
 endif()
@@ -165,7 +167,10 @@ if(EUI_RESOLVED_RENDER_BACKEND STREQUAL "opengl")
         endif()
     endif()
     add_library(glad "${glad_SOURCE_DIR}/src/glad.c")
-    target_include_directories(glad PUBLIC "${glad_SOURCE_DIR}/include")
+    target_include_directories(glad PUBLIC
+        $<BUILD_INTERFACE:${glad_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/eui-neo/3rd/glad/include>
+    )
     if(NOT WIN32)
         target_link_libraries(glad PUBLIC ${CMAKE_DL_LIBS})
     endif()
@@ -270,7 +275,10 @@ add_library(eui_zlib STATIC
     "${EUI_ZLIB_DIR}/uncompr.c"
     "${EUI_ZLIB_DIR}/zutil.c"
 )
-target_include_directories(eui_zlib PUBLIC "${EUI_ZLIB_DIR}")
+target_include_directories(eui_zlib PUBLIC
+    $<BUILD_INTERFACE:${EUI_ZLIB_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/eui-neo/3rd/zlib-1.3.1>
+)
 if(UNIX)
     target_compile_definitions(eui_zlib PRIVATE HAVE_UNISTD_H)
 endif()
@@ -390,7 +398,10 @@ if(EUI_ENABLE_MARKDOWN)
     endif()
 
     add_library(eui_md4c STATIC "${EUI_MD4C_DIR}/src/md4c.c")
-    target_include_directories(eui_md4c PUBLIC "${EUI_MD4C_DIR}/src")
+    target_include_directories(eui_md4c PUBLIC
+        $<BUILD_INTERFACE:${EUI_MD4C_DIR}/src>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/eui-neo/3rd/md4c/src>
+    )
     set_target_properties(eui_md4c PROPERTIES POSITION_INDEPENDENT_CODE ON)
     eui_silence_third_party_warnings(eui_md4c)
     if(NOT TARGET md4c::md4c)

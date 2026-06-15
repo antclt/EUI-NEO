@@ -198,6 +198,85 @@ void scrollCase(eui::Ui& ui, const std::string& id, float x, float y) {
         .build();
 }
 
+void overlayCase(eui::Ui& ui, const std::string& id, float x, float y) {
+    components::card(ui, id)
+        .position(x, y)
+        .size(kCardWidth, kCardHeight)
+        .padding(kCardInset)
+        .color({0.11f, 0.13f, 0.18f, 1.0f})
+        .border(1.0f, {0.30f, 0.36f, 0.46f, 1.0f})
+        .content([&] {
+            label(ui, id + ".title", "overlay background ignores layout", 0.0f, kCardWidth - kCardInset * 2.0f);
+            ui.column(id + ".lane")
+                .position(0.0f, 42.0f)
+                .size(kCardWidth - kCardInset * 2.0f, 98.0f)
+                .padding(12.0f)
+                .gap(8.0f)
+                .justifyContent(eui::Align::CENTER)
+                .alignItems(eui::Align::CENTER)
+                .content([&] {
+                    ui.rect(id + ".lane.bg")
+                        .fill()
+                        .overlay()
+                        .color({0.18f, 0.22f, 0.30f, 1.0f})
+                        .radius(7.0f)
+                        .build();
+                    sampleBlock(ui, id + ".lane.a", 0.0f, 0.0f, 132.0f, 28.0f,
+                                {0.28f, 0.38f, 0.56f, 1.0f}, "center A");
+                    sampleBlock(ui, id + ".lane.b", 0.0f, 0.0f, 132.0f, 28.0f,
+                                {0.34f, 0.28f, 0.50f, 1.0f}, "center B");
+                })
+                .build();
+        })
+        .build();
+}
+
+void flexBoundsCase(eui::Ui& ui, const std::string& id, float x, float y) {
+    components::card(ui, id)
+        .position(x, y)
+        .size(kCardWidth, kCardHeight)
+        .padding(kCardInset)
+        .color({0.11f, 0.13f, 0.18f, 1.0f})
+        .border(1.0f, {0.30f, 0.36f, 0.46f, 1.0f})
+        .content([&] {
+            const float contentWidth = kCardWidth - kCardInset * 2.0f;
+            label(ui, id + ".title", "flex stays inside fixed row", 0.0f, contentWidth);
+            ui.row(id + ".row")
+                .position(0.0f, 52.0f)
+                .size(contentWidth, 54.0f)
+                .gap(8.0f)
+                .content([&] {
+                    sampleBlock(ui, id + ".left", 0.0f, 0.0f, 54.0f, 44.0f,
+                                {0.27f, 0.27f, 0.32f, 1.0f}, "L");
+                    ui.stack(id + ".center")
+                        .height(44.0f)
+                        .flexGrow(1.0f)
+                        .minWidth(72.0f)
+                        .content([&] {
+                            ui.rect(id + ".center.bg")
+                                .fill()
+                                .color({0.20f, 0.34f, 0.56f, 1.0f})
+                                .radius(7.0f)
+                                .build();
+                            ui.text(id + ".center.text")
+                                .fill()
+                                .text("flex")
+                                .fontSize(13.0f)
+                                .lineHeight(18.0f)
+                                .horizontalAlign(eui::HorizontalAlign::Center)
+                                .verticalAlign(eui::VerticalAlign::Center)
+                                .color({0.95f, 0.97f, 1.0f, 1.0f})
+                                .build();
+                        })
+                        .build();
+                    sampleBlock(ui, id + ".right", 0.0f, 0.0f, 54.0f, 44.0f,
+                                {0.34f, 0.28f, 0.42f, 1.0f}, "R");
+                })
+                .build();
+        })
+        .build();
+}
+
 } // namespace
 
 const DslAppConfig& dslAppConfig() {
@@ -236,6 +315,8 @@ void compose(eui::Ui& ui, const eui::Screen& screen) {
     wrapContentCase(ui, "wrap", left + kCardWidth + kGap, top);
     fillCase(ui, "fill", left, top + kCardHeight + kGap);
     scrollCase(ui, "scroll", left + kCardWidth + kGap, top + kWrapCardHeight + kGap);
+    overlayCase(ui, "overlay", left, top + kCardHeight * 2.0f + kGap * 2.0f);
+    flexBoundsCase(ui, "flex.bounds", left + kCardWidth + kGap, top + kCardHeight * 2.0f + kGap * 2.0f);
 }
 
 } // namespace app

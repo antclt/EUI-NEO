@@ -97,6 +97,8 @@ ui.stack("root")
 .justifyContent(eui::Align::CENTER)
 .alignItems(eui::Align::CENTER)
 .align(eui::Align::CENTER, eui::Align::CENTER)
+.overlay()
+.ignoreLayout()
 .zIndex(value)
 .clip()
 .overflowHidden()
@@ -104,7 +106,9 @@ ui.stack("root")
 
 `.zIndex(...)` 只影响同级元素的绘制顺序和 topmost hit-test，不参与布局计算；值越大越靠上。`.clip()` 会按该元素布局矩形裁剪自己和子树，并且命中测试也不会穿出裁剪区域。
 
-`Row / Column` 的主轴 flex 分配会把结果作为子项测量约束，fixed、wrapContent 和 fill 子项都可以显式参与 grow / shrink；默认 `flexShrink` 为 0，避免固定尺寸控件被意外压扁。`Stack` 会用自身最终 inner size 重新测量 fill 子项，适合背景层和覆盖层；`Stack.wrapContent()` 会把子项正向 x/y 偏移计入包裹尺寸，负向偏移仍视为向外溢出。
+`Row / Column` 的主轴 flex 分配会先用自身 fixed / fill 结果约束 inner size，再把结果作为子项测量约束；fixed、wrapContent 和 fill 子项都可以显式参与 grow / shrink，默认 `flexShrink` 为 0，避免固定尺寸控件被意外压扁。`Stack` 会用自身最终 inner size 重新测量 fill 子项，适合普通叠放背景层；`Stack.wrapContent()` 会把子项正向 x/y 偏移计入包裹尺寸，负向偏移仍视为向外溢出。
+
+`.overlay()` / `.ignoreLayout()` 用于装饰背景、调试框等不应该占据布局流的覆盖层。它仍会渲染、仍遵守 zIndex / hit-test，但不参与父容器 measure、gap、Row / Column / Flow 排列，也不会撑开 wrapContent 或 scrollView 内容高度。不要用 `z(-1)` 代替 `.overlay()`；zIndex 只表达绘制层级，不表达布局语义。
 
 ## Loader 与实例状态
 
