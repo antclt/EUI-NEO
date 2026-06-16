@@ -31,6 +31,7 @@ inline bool isPolygonAnimating(const Element& element, const runtime::PolygonIns
            instance.pressBlend.isMovingTo(interactive && stateColorsVisible && instance.interaction.pressed ? 1.0f : 0.0f) ||
            instance.frame.isActive() ||
            instance.color.isActive() ||
+           instance.radius.isActive() ||
            instance.opacity.isActive() ||
            instance.transform.isActive();
 }

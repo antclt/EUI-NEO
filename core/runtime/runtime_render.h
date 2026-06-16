@@ -194,6 +194,7 @@ inline void Runtime::renderPolygon(
 
     instance.primitive->setBounds(frame.x, frame.y, frame.width, frame.height);
     instance.primitive->setPoints(scaledPolygonPoints(instance.points, dpiScale));
+    instance.primitive->setRadius(toPixels(instance.radius.value(), dpiScale));
     instance.primitive->setColor(instance.color.value());
     instance.primitive->setOpacity(instance.opacity.value() * renderTransform.opacity);
     instance.primitive->setTransformMatrix(combinedPrimitiveMatrix(renderTransform, frame, transform));

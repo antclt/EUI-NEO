@@ -22,6 +22,7 @@
 #include "components/dialog.h"
 #include "components/sidebar.h"
 #include "components/toast.h"
+#include "components/tooltip.h"
 #include "components/contextmenu.h"
 #include "components/carousel.h"
 #include "components/linechart.h"

@@ -60,6 +60,7 @@ struct PolygonInstance {
     SmoothedValue<float> pressBlend;
     AnimatedValue<LayoutRect> frame;
     AnimatedValue<Color> color;
+    AnimatedValue<float> radius;
     AnimatedValue<float> opacity;
     AnimatedValue<Transform> transform;
     std::vector<Vec2> points;

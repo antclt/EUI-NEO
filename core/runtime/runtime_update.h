@@ -850,11 +850,13 @@ inline void Runtime::updatePolygon(
     bool changed = hoverChanged || pressChanged || pointsChanged;
     changed = instance.frame.setTarget(element.frame, element.transition, !snapFrame && shouldAnimateFrame(element)) || changed;
     changed = instance.color.setTarget(currentColor, element.transition, shouldAnimate(element, AnimProperty::Color)) || changed;
+    changed = instance.radius.setTarget(element.radius, element.transition, shouldAnimate(element, AnimProperty::Radius)) || changed;
     changed = instance.opacity.setTarget(element.opacity, element.transition, shouldAnimate(element, AnimProperty::Opacity)) || changed;
     changed = instance.transform.setTarget(core::dsl::runtimeTransformForElement(element, scrollStates_, sliderStates_, element.transform), element.transition, shouldAnimate(element, AnimProperty::Transform)) || changed;
 
     changed = instance.frame.tick(deltaSeconds) || changed;
     changed = instance.color.tick(deltaSeconds) || changed;
+    changed = instance.radius.tick(deltaSeconds) || changed;
     changed = instance.opacity.tick(deltaSeconds) || changed;
     changed = instance.transform.tick(deltaSeconds) || changed;
 

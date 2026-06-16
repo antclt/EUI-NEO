@@ -166,4 +166,50 @@ inline void appendPolygonTriangleFan(std::vector<PrimitiveGeometryVertex>& verti
     }
 }
 
+inline Vec2 lerpVec2(const Vec2& from, const Vec2& to, float amount) {
+    return {
+        from.x + (to.x - from.x) * amount,
+        from.y + (to.y - from.y) * amount
+    };
+}
+
+inline std::vector<Vec2> roundedPolygonPoints(const std::vector<Vec2>& points, float radius) {
+    if (points.size() < 3 || radius <= 0.001f) {
+        return points;
+    }
+
+    std::vector<Vec2> result;
+    result.reserve(points.size() * 6u);
+
+    for (std::size_t index = 0; index < points.size(); ++index) {
+        const Vec2& previous = points[(index + points.size() - 1u) % points.size()];
+        const Vec2& current = points[index];
+        const Vec2& next = points[(index + 1u) % points.size()];
+        const Vec2 toPrevious{previous.x - current.x, previous.y - current.y};
+        const Vec2 toNext{next.x - current.x, next.y - current.y};
+        const float previousLength = std::sqrt(toPrevious.x * toPrevious.x + toPrevious.y * toPrevious.y);
+        const float nextLength = std::sqrt(toNext.x * toNext.x + toNext.y * toNext.y);
+        const float cornerDistance = std::min(radius, std::min(previousLength, nextLength) * 0.45f);
+
+        if (cornerDistance <= 0.001f) {
+            result.push_back(current);
+            continue;
+        }
+
+        const Vec2 start = lerpVec2(current, previous, cornerDistance / previousLength);
+        const Vec2 end = lerpVec2(current, next, cornerDistance / nextLength);
+        result.push_back(start);
+
+        constexpr int segments = 5;
+        for (int segment = 1; segment < segments; ++segment) {
+            const float t = static_cast<float>(segment) / static_cast<float>(segments);
+            result.push_back(lerpVec2(lerpVec2(start, current, t), lerpVec2(current, end, t), t));
+        }
+
+        result.push_back(end);
+    }
+
+    return result;
+}
+
 } // namespace core::render
