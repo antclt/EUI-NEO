@@ -15,6 +15,7 @@ else()
 endif()
 option(EUI_BUILD_APPS "Build EUI-NEO bundled example applications" ${EUI_NEO_TOP_LEVEL_DEFAULT})
 option(EUI_BUILD_TEST_FIXTURES "Build internal test fixture applications." OFF)
+option(EUI_BUILD_SHARED "Build eui_neo as a shared library instead of a static library." OFF)
 option(EUI_ENABLE_INSTALL "Install EUI-NEO library, headers, and CMake package files." ON)
 option(EUI_VULKAN_LOW_LATENCY_PRESENT "Prefer low-latency Vulkan presentation when available." OFF)
 
@@ -103,6 +104,12 @@ elseif(EUI_RENDER_BACKEND STREQUAL "vulkan")
 endif()
 message(STATUS "EUI render backend: requested=${EUI_RENDER_BACKEND}, resolved=${EUI_RESOLVED_RENDER_BACKEND}")
 
+set(EUI_NEO_LIBRARY_TYPE STATIC)
+if(EUI_BUILD_SHARED)
+    set(EUI_NEO_LIBRARY_TYPE SHARED)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 include("${CMAKE_CURRENT_SOURCE_DIR}/3rd/dependencies.cmake")
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
@@ -147,9 +154,12 @@ endif()
 # Core library target
 # -----------------------------------------------------------------------------
 
-add_library(eui_neo STATIC ${CORE_SOURCES})
+add_library(eui_neo ${EUI_NEO_LIBRARY_TYPE} ${CORE_SOURCES})
 add_library(eui::neo ALIAS eui_neo)
 set_target_properties(eui_neo PROPERTIES EXPORT_NAME neo)
+if(EUI_BUILD_SHARED AND WIN32)
+    set_target_properties(eui_neo PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
 target_include_directories(eui_neo
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -409,6 +419,7 @@ include(CMakeFindDependencyMacro)
 
 set(EUI_NEO_WINDOW_BACKEND "@EUI_WINDOW_BACKEND@")
 set(EUI_NEO_RENDER_BACKEND "@EUI_RESOLVED_RENDER_BACKEND@")
+set(EUI_NEO_BUILD_SHARED @EUI_BUILD_SHARED@)
 set(EUI_NEO_DEPS_MODE "@EUI_DEPS_MODE@")
 set(EUI_NEO_ENABLE_HARFBUZZ @EUI_ENABLE_HARFBUZZ@)
 set(EUI_NEO_ENABLE_MARKDOWN @EUI_ENABLE_MARKDOWN@)

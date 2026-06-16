@@ -103,10 +103,15 @@ jobs:
           $arch = "${{ runner.arch }}".ToLowerInvariant()
           $out = "dist/EUI-NEO-$label-windows-$arch-runtime.zip"
           $binDir = "build/Release"
+          $runtimeApps = @("calculator", "clock", "eui_demo", "gallery", "serial_tool")
 
           $items = @()
-          $items += Get-ChildItem $binDir -Filter *.exe -File -ErrorAction SilentlyContinue
-          if ($items.Count -eq 0) { throw "No .exe outputs found in $binDir." }
+          foreach ($app in $runtimeApps) {
+            $path = Join-Path $binDir "$app.exe"
+            if (Test-Path $path) { $items += Get-Item $path }
+          }
+          if ($items.Count -eq 0) { throw "No example runtime outputs found in $binDir." }
+          $items += Get-ChildItem $binDir -Filter *.dll -File -ErrorAction SilentlyContinue
           if (Test-Path "$binDir/assets") { $items += Get-Item "$binDir/assets" }
 
           Compress-Archive -Path $items.FullName -DestinationPath $out -Force
@@ -131,13 +136,19 @@ jobs:
           out="dist/EUI-NEO-${label}-${{ matrix.platform }}-${arch}-runtime.tar.gz"
 
           files=()
-          while IFS= read -r bin; do
-            files+=("$bin")
-          done < <(find build -maxdepth 1 -type f -perm -111)
+          runtime_apps=(calculator clock eui_demo gallery serial_tool)
+          for app in "${runtime_apps[@]}"; do
+            if [ -x "build/$app" ]; then
+              files+=("build/$app")
+            fi
+          done
           if [ "${#files[@]}" -eq 0 ]; then
-            echo "No executable outputs found in build." >&2
+            echo "No example runtime outputs found in build." >&2
             exit 1
           fi
+          while IFS= read -r lib; do
+            files+=("$lib")
+          done < <(find build -maxdepth 1 -type f \( -name '*.so' -o -name '*.dylib' \))
           if [ -d build/assets ]; then
             files+=("build/assets")
           fi
