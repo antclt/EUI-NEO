@@ -200,6 +200,7 @@ struct Element {
     bool subtreeNeedsUpdate = true;
     bool subtreeHasDependentVisuals = false;
     bool subtreeHasBackdropBlur = false;
+    bool subtreeBlocksRetainedLayer = true;
 
     LayoutType layoutType() const {
         if (kind == ElementKind::Row) {
@@ -1535,12 +1536,14 @@ private:
         element.subtreeNeedsUpdate = elementNeedsUpdate(element);
         element.subtreeHasDependentVisuals = elementHasDependentVisuals(element);
         element.subtreeHasBackdropBlur = elementHasBackdropBlur(element);
+        element.subtreeBlocksRetainedLayer = elementBlocksRetainedLayer(element);
         for (const auto& child : element.children) {
             element.orderedChildren.push_back(child.get());
             rebuildOrderedChildren(*child);
             element.subtreeNeedsUpdate = element.subtreeNeedsUpdate || child->subtreeNeedsUpdate;
             element.subtreeHasDependentVisuals = element.subtreeHasDependentVisuals || child->subtreeHasDependentVisuals;
             element.subtreeHasBackdropBlur = element.subtreeHasBackdropBlur || child->subtreeHasBackdropBlur;
+            element.subtreeBlocksRetainedLayer = element.subtreeBlocksRetainedLayer || child->subtreeBlocksRetainedLayer;
         }
         std::stable_sort(element.orderedChildren.begin(), element.orderedChildren.end(), [](const Element* a, const Element* b) {
             return a->zIndex < b->zIndex;
@@ -1591,6 +1594,40 @@ private:
         return element.kind == ElementKind::Rect &&
                (element.blur > 0.0f ||
                 (element.transition.enabled && hasAnimProperty(element.transition.properties, AnimProperty::Blur)));
+    }
+
+    static bool elementBlocksRetainedLayer(const Element& element) {
+        return element.interactive ||
+               element.focusable ||
+               element.hasImeRect ||
+               element.onClick ||
+               element.onPress ||
+               element.onRelease ||
+               element.onMove ||
+               element.onContextMenu ||
+               element.onHoverChanged ||
+               element.onFocusChanged ||
+               element.onTextInput ||
+               element.onScroll ||
+               element.onScrollOffsetChanged ||
+               element.onDrag ||
+               element.onTimer ||
+               element.onFrame ||
+               element.timerSeconds > 0.0f ||
+               !element.visualStateSourceId.empty() ||
+               !element.hoverOpacitySourceId.empty() ||
+               !element.pointerRuntimeSourceId.empty() ||
+               !element.scrollStateId.empty() ||
+               !element.scrollContentSourceId.empty() ||
+               !element.scrollDragSourceId.empty() ||
+               !element.scrollThumbSourceId.empty() ||
+               !element.sliderStateId.empty() ||
+               !element.sliderInputSourceId.empty() ||
+               !element.sliderFillSourceId.empty() ||
+               !element.sliderKnobSourceId.empty() ||
+               !element.dirtyKey.empty() ||
+               (element.kind == ElementKind::Image && !element.imageSource.empty()) ||
+               element.kind == ElementKind::Svg;
     }
 
     std::string pageId_;

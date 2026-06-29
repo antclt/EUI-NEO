@@ -7,14 +7,19 @@
 #endif
 #include <windows.h>
 #include <mmsystem.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
 #endif
 
 #include <GLFW/glfw3.h>
+#ifdef _WIN32
+#include <GLFW/glfw3native.h>
+#endif
 
 #include "eui/app.h"
 #include "core/app/app_runner.h"
 #include "core/app/dsl_window_manager.h"
 #include "core/app/dsl_window_runtime.h"
+#include "core/app/frame_pacing.h"
 #include "core/app/main_window_runtime.h"
 #include "core/input/input_state.h"
 #include "core/platform/platform.h"
@@ -123,6 +128,22 @@ GLFWmonitor* getWindowMonitor(GLFWwindow* window) {
 }
 
 double getWindowRefreshRate(GLFWwindow* window) {
+#ifdef _WIN32
+    HWND hwnd = glfwGetWin32Window(window);
+    HMONITOR nativeMonitor = hwnd != nullptr ? MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) : nullptr;
+    if (nativeMonitor != nullptr) {
+        MONITORINFOEXW monitorInfo{};
+        monitorInfo.cbSize = sizeof(monitorInfo);
+        if (GetMonitorInfoW(nativeMonitor, &monitorInfo)) {
+            DEVMODEW mode{};
+            mode.dmSize = sizeof(mode);
+            if (EnumDisplaySettingsW(monitorInfo.szDevice, ENUM_CURRENT_SETTINGS, &mode) &&
+                mode.dmDisplayFrequency > 1) {
+                return static_cast<double>(mode.dmDisplayFrequency);
+            }
+        }
+    }
+#endif
     GLFWmonitor* monitor = getWindowMonitor(window);
     const GLFWvidmode* mode = monitor ? glfwGetVideoMode(monitor) : nullptr;
     if (mode && mode->refreshRate > 0) {
@@ -142,11 +163,7 @@ void waitForNextFrame(GLFWwindow* window, const WindowState& windowState) {
             break;
         }
 
-        if (remaining > 0.002) {
-            glfwWaitEventsTimeout(remaining - 0.001);
-        } else {
-            std::this_thread::sleep_for(std::chrono::duration<double>(remaining * 0.5));
-        }
+        app::detail::waitForFrameDuration(remaining);
     }
 }
 

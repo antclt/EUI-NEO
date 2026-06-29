@@ -302,6 +302,33 @@ inline bool Runtime::canReuseStaticSubtree(
     return !renderTransform.active && closeEnough(renderTransform.opacity, 1.0f);
 }
 
+inline bool Runtime::elementHasActiveAnimation(const Element& element) const {
+    if (element.kind == ElementKind::Row ||
+        element.kind == ElementKind::Column ||
+        element.kind == ElementKind::Stack ||
+        element.kind == ElementKind::Flow) {
+        const auto item = layouts_.find(element.id);
+        return item != layouts_.end() && isLayoutAnimating(item->second);
+    }
+    if (element.kind == ElementKind::Rect) {
+        const auto item = rects_.find(element.id);
+        return item != rects_.end() && isRectAnimating(element, item->second);
+    }
+    if (element.kind == ElementKind::Polygon) {
+        const auto item = polygons_.find(element.id);
+        return item != polygons_.end() && isPolygonAnimating(element, item->second);
+    }
+    if (element.kind == ElementKind::Text) {
+        const auto item = texts_.find(element.id);
+        return item != texts_.end() && isTextAnimating(item->second);
+    }
+    if (element.kind == ElementKind::Image || element.kind == ElementKind::Svg) {
+        const auto item = images_.find(element.id);
+        return item != images_.end() && isImageAnimating(item->second);
+    }
+    return false;
+}
+
 inline Transform Runtime::pointerRuntimeTransform(
     const Element& element,
     const PointerEvent& event,
@@ -778,6 +805,7 @@ inline runtime::PaintBoundsInstance Runtime::updateElementTree(
     const RenderTransform renderTransform = resolveRenderTransform(element, dpiScale, inheritedTransform);
     runtime::PaintBoundsInstance bounds;
     bounds.seen = true;
+    bounds.subtreeAnimating = elementHasActiveAnimation(element);
     if (renderTransform.opacity > 0.001f &&
         element.kind != ElementKind::Row &&
         element.kind != ElementKind::Column &&
@@ -794,6 +822,7 @@ inline runtime::PaintBoundsInstance Runtime::updateElementTree(
     for (const Element* child : children) {
         const runtime::PaintBoundsInstance childBounds =
             updateElementTree(*child, event, deltaSeconds, dpiScale, hoverTargetId, renderTransform, childAncestorFrameChanged, disabledTree);
+        bounds.subtreeAnimating = bounds.subtreeAnimating || childBounds.subtreeAnimating;
         if (!childBounds.hasSubtree) {
             continue;
         }

@@ -194,15 +194,23 @@ inline void Runtime::renderElementChildren(
     const Rect& scissorRect) {
     const std::vector<const Element*>& children = orderedElements(element);
     for (const Element* child : children) {
-        if (!renderRetainedLayer(renderBackend,
-                                 *child,
-                                 windowWidth,
-                                 windowHeight,
-                                 dpiScale,
-                                 renderTransform,
-                                 dirtyRect,
-                                 hasScissor,
-                                 scissorRect)) {
+        const bool mayUseRetainedLayer =
+            !child->orderedChildren.empty() &&
+            !child->subtreeBlocksRetainedLayer &&
+            !child->subtreeHasDependentVisuals &&
+            !child->subtreeHasBackdropBlur;
+        const bool retainedLayerRendered =
+            mayUseRetainedLayer &&
+            renderRetainedLayer(renderBackend,
+                                *child,
+                                windowWidth,
+                                windowHeight,
+                                dpiScale,
+                                renderTransform,
+                                dirtyRect,
+                                hasScissor,
+                                scissorRect);
+        if (!retainedLayerRendered) {
             renderElement(renderBackend, *child, windowWidth, windowHeight, dpiScale, renderTransform, dirtyRect, hasScissor, scissorRect);
         }
     }
@@ -224,11 +232,7 @@ inline bool Runtime::isRetainedLayerCandidate(const Element& element,
                                               const Rect* dirtyRect,
                                               bool hasScissor,
                                               const Rect& scissorRect) const {
-    if (retainedLayerHasBlockingRuntime(element) ||
-        retainedLayerHasActiveAnimation(element) ||
-        element.subtreeHasDependentVisuals ||
-        element.subtreeHasBackdropBlur ||
-        !bounds.hasSubtree ||
+    if (!bounds.hasSubtree ||
         bounds.drawCost < 8) {
         return false;
     }
@@ -245,90 +249,13 @@ inline bool Runtime::isRetainedLayerCandidate(const Element& element,
     if (hasScissor && !intersects(subtreePixels, scissorRect)) {
         return false;
     }
+    if (element.subtreeHasDependentVisuals ||
+        element.subtreeHasBackdropBlur ||
+        element.subtreeBlocksRetainedLayer ||
+        bounds.subtreeAnimating) {
+        return false;
+    }
     return true;
-}
-
-inline bool Runtime::retainedLayerHasBlockingRuntime(const Element& element) const {
-    if (element.interactive ||
-        element.focusable ||
-        element.hasImeRect ||
-        element.onClick ||
-        element.onPress ||
-        element.onRelease ||
-        element.onMove ||
-        element.onContextMenu ||
-        element.onHoverChanged ||
-        element.onFocusChanged ||
-        element.onTextInput ||
-        element.onScroll ||
-        element.onScrollOffsetChanged ||
-        element.onDrag ||
-        element.onTimer ||
-        element.onFrame ||
-        element.timerSeconds > 0.0f ||
-        !element.visualStateSourceId.empty() ||
-        !element.hoverOpacitySourceId.empty() ||
-        !element.pointerRuntimeSourceId.empty() ||
-        !element.scrollStateId.empty() ||
-        !element.scrollContentSourceId.empty() ||
-        !element.scrollDragSourceId.empty() ||
-        !element.scrollThumbSourceId.empty() ||
-        !element.sliderStateId.empty() ||
-        !element.sliderInputSourceId.empty() ||
-        !element.sliderFillSourceId.empty() ||
-        !element.sliderKnobSourceId.empty() ||
-        !element.dirtyKey.empty() ||
-        (element.kind == ElementKind::Image && !element.imageSource.empty()) ||
-        element.kind == ElementKind::Svg) {
-        return true;
-    }
-    const std::vector<const Element*>& children = orderedElements(element);
-    for (const Element* child : children) {
-        if (retainedLayerHasBlockingRuntime(*child)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-inline bool Runtime::retainedLayerHasActiveAnimation(const Element& element) const {
-    if (element.kind == ElementKind::Row ||
-        element.kind == ElementKind::Column ||
-        element.kind == ElementKind::Stack ||
-        element.kind == ElementKind::Flow) {
-        const auto item = layouts_.find(element.id);
-        if (item != layouts_.end() && isLayoutAnimating(item->second)) {
-            return true;
-        }
-    } else if (element.kind == ElementKind::Rect) {
-        const auto item = rects_.find(element.id);
-        if (item != rects_.end() && isRectAnimating(element, item->second)) {
-            return true;
-        }
-    } else if (element.kind == ElementKind::Polygon) {
-        const auto item = polygons_.find(element.id);
-        if (item != polygons_.end() && isPolygonAnimating(element, item->second)) {
-            return true;
-        }
-    } else if (element.kind == ElementKind::Text) {
-        const auto item = texts_.find(element.id);
-        if (item != texts_.end() && isTextAnimating(item->second)) {
-            return true;
-        }
-    } else if (element.kind == ElementKind::Image || element.kind == ElementKind::Svg) {
-        const auto item = images_.find(element.id);
-        if (item != images_.end() && isImageAnimating(item->second)) {
-            return true;
-        }
-    }
-
-    const std::vector<const Element*>& children = orderedElements(element);
-    for (const Element* child : children) {
-        if (retainedLayerHasActiveAnimation(*child)) {
-            return true;
-        }
-    }
-    return false;
 }
 
 inline std::uint64_t Runtime::retainedLayerSignature(const Element& element,
@@ -468,9 +395,11 @@ inline bool Runtime::renderRetainedLayer(core::render::RenderBackend& renderBack
         return false;
     }
     const auto boundsIt = paintBounds_.find(element.id);
-    const Rect subtreePixels = toPixelRect(boundsIt != paintBounds_.end() ? boundsIt->second.subtree : Rect{}, dpiScale);
-    if (boundsIt == paintBounds_.end() ||
-        !isRetainedLayerCandidate(element, boundsIt->second, subtreePixels, dirtyRect, hasScissor, scissorRect)) {
+    if (boundsIt == paintBounds_.end()) {
+        return false;
+    }
+    const Rect subtreePixels = toPixelRect(boundsIt->second.subtree, dpiScale);
+    if (!isRetainedLayerCandidate(element, boundsIt->second, subtreePixels, dirtyRect, hasScissor, scissorRect)) {
         return false;
     }
 

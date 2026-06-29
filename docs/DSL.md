@@ -531,6 +531,7 @@ components::button(ui, "save")
 - 维护 dirty rect。
 - 使用离屏 framebuffer cache + scissor 做 Runtime 层脏区重绘；后端再负责 cache blit 和窗口 present。
 - 在 `layout()` 后缓存同级绘制顺序和子树能力标记，避免 update / hit-test / render 热路径反复分配、排序和扫描无关子树。
+- 自动 retained layer cache 会缓存稳定静态子树；候选判断使用 layout/update 阶段缓存的子树标记，避免动画帧里重复递归扫描。
 - 对静态、无交互、无动画、无 timer、无 scroll、无 dirty key 的子树做保守 early-out；指针不在子树 bounds 内且没有继承 transform / opacity 变化时，可以复用上一帧 paint bounds。
 - 指针没有移动、没有按键边沿、树结构没有变化且上一帧没有动画时，Runtime 会复用上一帧 hover 命中目标，避免复杂静态页面每帧重新全树 hit-test。
 - 处理 DPI scale。
@@ -547,4 +548,4 @@ components::button(ui, "save")
 - 已有 click / press / release / pointer move / hover / context menu / text input / scroll / drag 回调；更顺手的手势开发优先用 `components::mouseArea`。
 - 默认 hit-test 按布局矩形计算；开启 `.transformedHitTest()` 后会按元素当前 transform 和父容器继承矩阵反投影命中。
 - 脏区渲染是保守矩形，复杂重叠场景可能扩大重绘区域。Runtime 可以只重绘脏区，Vulkan 可以按 dirty rect 同步 render cache；最终 present 是否也是脏区提交取决于平台窗口系统、图形 API 和驱动能力。
-- 当前优化仍是 Runtime 级遍历和单 framebuffer cache 优化，不是独立 retained layer cache；复杂静态背景仍会在 dirty rect 相交时参与局部重绘判断。
+- 当前优化是 Runtime 级遍历、framebuffer cache、dirty rect 和自动 retained layer cache 的组合；它不是完整 retained scene graph，复杂 blur、动态 image/svg、交互和动画子树仍会走普通 dirty repaint。

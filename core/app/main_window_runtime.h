@@ -2,6 +2,7 @@
 
 #include "eui/app.h"
 #include "core/app/app_runner.h"
+#include "core/app/frame_pacing.h"
 #include "core/input/input_state.h"
 #include "core/render/render_backend.h"
 #include "core/render/render_surface.h"
@@ -53,7 +54,7 @@ public:
             if (remaining <= 0.0) {
                 break;
             }
-            std::this_thread::sleep_for(std::chrono::duration<double>(remaining));
+            app::detail::waitForFrameDuration(remaining);
         }
 
         const double frameTime = core::window::timeSeconds();

@@ -30,6 +30,18 @@ The first implementation is intentionally conservative:
 
 The cache key includes structure, paint bounds, draw cost, DPI scale, and paint-affecting element properties.
 
+## Hot Path Optimization
+
+After the first MVP shipped, the runtime kept the candidate checks on the render hot path too long. That was fine for complex static pages, but it was wasteful on animation-heavy demos that mostly contain leaf primitives.
+
+The current shape is:
+
+- `layout()` / subtree rebuild caches static blocker flags on `Element`.
+- `update()` caches whether a subtree currently has active animation in `PaintBoundsInstance`.
+- `render()` only reads those cached flags and skips retained-layer probing for leaf-only children.
+
+This keeps the optimization bottom-layer only, while avoiding repeated subtree recursion during every frame.
+
 ## Render Flow
 
 ```text

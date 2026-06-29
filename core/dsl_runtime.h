@@ -107,6 +107,8 @@ private:
                                bool ancestorFrameChanged,
                                bool ancestorDisabled) const;
 
+    bool elementHasActiveAnimation(const Element& element) const;
+
     runtime::PaintBoundsInstance updateElementTree(const Element& element,
                                                    const PointerEvent& event,
                                                    float deltaSeconds,
@@ -122,10 +124,6 @@ private:
                                   const Rect* dirtyRect,
                                   bool hasScissor,
                                   const Rect& scissorRect) const;
-
-    bool retainedLayerHasBlockingRuntime(const Element& element) const;
-
-    bool retainedLayerHasActiveAnimation(const Element& element) const;
 
     std::uint64_t retainedLayerSignature(const Element& element,
                                          const runtime::PaintBoundsInstance& bounds,

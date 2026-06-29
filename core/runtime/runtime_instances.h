@@ -164,6 +164,7 @@ struct PaintBoundsInstance {
     int drawCost = 0;
     bool hasOwn = false;
     bool hasSubtree = false;
+    bool subtreeAnimating = false;
     bool seen = false;
 };
 
