@@ -548,4 +548,4 @@ components::button(ui, "save")
 - 已有 click / press / release / pointer move / hover / context menu / text input / scroll / drag 回调；更顺手的手势开发优先用 `components::mouseArea`。
 - 默认 hit-test 按布局矩形计算；开启 `.transformedHitTest()` 后会按元素当前 transform 和父容器继承矩阵反投影命中。
 - 脏区渲染是保守矩形，复杂重叠场景可能扩大重绘区域。Runtime 可以只重绘脏区，Vulkan 可以按 dirty rect 同步 render cache；最终 present 是否也是脏区提交取决于平台窗口系统、图形 API 和驱动能力。
-- 当前优化是 Runtime 级遍历、framebuffer cache、dirty rect 和自动 retained layer cache 的组合；它不是完整 retained scene graph，复杂 blur、动态 image/svg、交互和动画子树仍会走普通 dirty repaint。
+- 当前优化是 Runtime 级遍历、framebuffer cache、dirty rect 和自动 retained layer cache 的组合；OpenGL/Vulkan 后端都提供 retained layer 资源。它不是完整 retained scene graph，复杂 blur、动态 image/svg、交互和动画子树仍会走普通 dirty repaint。

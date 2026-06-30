@@ -22,6 +22,7 @@ The first implementation is intentionally conservative:
 - Runtime automatically selects static child subtrees.
 - Components do not opt in and do not expose a cache API.
 - OpenGL stores each retained layer as a texture-backed framebuffer.
+- Vulkan stores each retained layer as a sampled color-attachment image plus framebuffer, and composites it with premultiplied alpha.
 - Non-supporting backends safely fall back to normal primitive replay.
 - Backdrop blur and dependent visual subtrees are not cached.
 - Animated, interactive, scroll, timer, frame callback, dirty-key, image, and SVG subtrees are not cached.
@@ -79,5 +80,6 @@ Healthy button interaction on a complex static page should trend toward high `H`
 - It currently avoids inherited active transforms for correctness.
 - It does not cache backdrop blur because blur samples existing framebuffer content.
 - It is not a full retained scene graph or batch renderer.
+- Vulkan keeps retained layer textures alive across swapchain rebuilds when possible, while recreating render-pass-dependent framebuffers lazily.
 
 The next step is to merge adjacent static sibling subtrees into paint runs so several static islands can become one layer draw.

@@ -51,6 +51,18 @@ public:
                      float radius,
                      int windowWidth,
                      int windowHeight) override;
+    LayerHandle createLayer(int width, int height) override;
+    bool resizeLayer(LayerHandle layer, int width, int height) override;
+    void destroyLayer(LayerHandle layer) override;
+    bool beginLayerFrame(LayerHandle layer, int width, int height) override;
+    void endLayerFrame() override;
+    TextureHandle layerTexture(LayerHandle layer) override;
+    void drawLayerTexture(TextureHandle handle,
+                          const float* vertices,
+                          std::size_t vertexFloatCount,
+                          const core::Rect& rect,
+                          int windowWidth,
+                          int windowHeight) override;
 
 private:
     struct TextureResource {
@@ -61,10 +73,23 @@ private:
         VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
         VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
         VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        VkFormat format = VK_FORMAT_UNDEFINED;
         int width = 0;
         int height = 0;
         int channels = 0;
         std::uint64_t generation = 0;
+    };
+
+    struct LayerResource {
+        TextureResource texture;
+        VkFramebuffer framebuffer = VK_NULL_HANDLE;
+        VkExtent2D extent{};
+    };
+
+    enum class RenderTarget {
+        Swapchain,
+        RenderCache,
+        Layer
     };
 
     struct MappedBuffer {
@@ -100,8 +125,19 @@ private:
     void destroy();
     void recordClearPass(const core::Color& color);
     void beginLoadPass();
+    bool createTargetImage(TextureResource& texture,
+                           int width,
+                           int height,
+                           VkFormat format,
+                           VkImageUsageFlags usage);
+    bool ensureTextureSampler(TextureResource& texture);
+    bool ensureLayerResource(LayerResource& layer, int width, int height);
+    void destroyLayerResource(LayerResource& layer);
+    void releaseAllLayerFramebuffers();
+    void releaseAllLayerResources();
     void destroyRenderCacheResources();
     void transitionRenderCacheImage(VkImageLayout newLayout);
+    void transitionLayerImage(LayerResource& layer, VkImageLayout newLayout);
     bool ensureRenderCacheResolvePipeline();
     bool ensureRenderCacheResolveDescriptor();
     void destroyRenderCacheResolvePipeline();
@@ -117,6 +153,9 @@ private:
     VkExtent2D currentRenderExtent() const;
     VkRect2D currentRenderArea() const;
     VkFramebuffer currentFramebuffer() const;
+    VkImage currentRenderImage() const;
+    VkImageLayout currentRenderImageLayout() const;
+    void setCurrentRenderImageLayout(VkImageLayout layout);
     VkCommandBuffer currentCommandBuffer() const;
     bool hasCurrentCommandBuffer() const;
     void endActiveRenderPass();
@@ -138,7 +177,7 @@ private:
     bool ensureTextAtlas(const TextAtlasPageData& page);
     bool ensureTextDescriptor();
     bool ensureTextVertexBuffer(std::size_t floatCount);
-    bool ensureImagePipeline();
+    bool ensureImagePipeline(bool premultipliedAlpha = false);
     bool ensureImageDescriptor(TextureResource& texture);
     bool ensureImageVertexBuffer();
     bool allocateUploadRegion(VkDeviceSize size, VkBuffer& buffer, VkDeviceSize& offset, void*& mapped);
@@ -191,6 +230,9 @@ private:
     bool swapchainTransferDstSupported_ = false;
     bool incrementalPresentSupported_ = false;
     bool backdropReady_ = false;
+    RenderTarget renderTarget_ = RenderTarget::Swapchain;
+    RenderTarget previousLayerTarget_ = RenderTarget::Swapchain;
+    LayerResource* activeLayer_ = nullptr;
     core::Rect scissorRect_{};
     core::Rect cacheRenderArea_{};
     core::Color clearColor_{0.0f, 0.0f, 0.0f, 1.0f};
@@ -243,9 +285,11 @@ private:
     std::uint32_t imageDescriptorPoolCapacity_ = 0;
     VkPipelineLayout imagePipelineLayout_ = VK_NULL_HANDLE;
     VkPipeline imagePipeline_ = VK_NULL_HANDLE;
+    VkPipeline imagePremultipliedPipeline_ = VK_NULL_HANDLE;
     MappedBuffer imageVertices_;
     UploadArena uploadArena_;
     std::vector<TextureResource*> pendingTextureDeletes_;
+    std::vector<LayerResource*> layers_;
 
 };
 

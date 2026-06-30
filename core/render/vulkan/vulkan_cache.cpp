@@ -124,11 +124,14 @@ void VulkanRenderBackend::beginRenderCacheFrame(int width,
         }
         cacheRenderArea_ = area;
     }
+    renderTarget_ = RenderTarget::RenderCache;
     renderingToCache_ = true;
+    activeLayer_ = nullptr;
 }
 
 void VulkanRenderBackend::endRenderCacheFrame() {
     endActiveRenderPass();
+    renderTarget_ = RenderTarget::Swapchain;
     renderingToCache_ = false;
 }
 
@@ -142,7 +145,9 @@ void VulkanRenderBackend::blitRenderCache(int width,
         return;
     }
     endActiveRenderPass();
+    renderTarget_ = RenderTarget::Swapchain;
     renderingToCache_ = false;
+    activeLayer_ = nullptr;
 
     width = std::min(std::max(1, width), static_cast<int>(std::min(renderCacheExtent_.width, swapchainExtent_.width)));
     height = std::min(std::max(1, height), static_cast<int>(std::min(renderCacheExtent_.height, swapchainExtent_.height)));
@@ -308,6 +313,14 @@ void VulkanRenderBackend::transitionRenderCacheImage(VkImageLayout newLayout) {
     }
     transitionImageLayout(commandBuffers_[currentImage_], renderCacheImage_, renderCacheLayout_, newLayout);
     renderCacheLayout_ = newLayout;
+}
+
+void VulkanRenderBackend::transitionLayerImage(LayerResource& layer, VkImageLayout newLayout) {
+    if (commandBuffers_.empty() || layer.texture.image == VK_NULL_HANDLE || currentImage_ >= commandBuffers_.size()) {
+        return;
+    }
+    transitionImageLayout(commandBuffers_[currentImage_], layer.texture.image, layer.texture.layout, newLayout);
+    layer.texture.layout = newLayout;
 }
 
 bool VulkanRenderBackend::ensureRenderCacheResolvePipeline() {
@@ -585,7 +598,9 @@ void VulkanRenderBackend::destroyRenderCacheResources() {
         renderCacheFramebuffer_ = VK_NULL_HANDLE;
         renderCacheLayout_ = VK_IMAGE_LAYOUT_UNDEFINED;
         renderCacheExtent_ = {};
+        renderTarget_ = RenderTarget::Swapchain;
         renderingToCache_ = false;
+        activeLayer_ = nullptr;
         invalidateRenderCacheSync();
         return;
     }
@@ -608,7 +623,9 @@ void VulkanRenderBackend::destroyRenderCacheResources() {
     }
     renderCacheLayout_ = VK_IMAGE_LAYOUT_UNDEFINED;
     renderCacheExtent_ = {};
+    renderTarget_ = RenderTarget::Swapchain;
     renderingToCache_ = false;
+    activeLayer_ = nullptr;
     invalidateRenderCacheSync();
 }
 
