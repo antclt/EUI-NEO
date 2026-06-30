@@ -89,6 +89,8 @@ sudo apt-get install -y libsdl2-dev
 
 Top-level builds create one executable for each `examples/*.cpp` page source, such as `gallery`, `chat`, and `eui_demo`. After build, `assets/` is copied next to the executable automatically.
 
+User apps can live under `apps/` and are built the same way by default in a top-level checkout. Use either a flat `apps/my_app.cpp` file or a directory app such as `apps/my_app/app.cpp`. Directory apps may include their own `apps/my_app/assets/`; those files are copied into the executable `assets/` directory after the framework assets. Disable this scan with `-DEUI_BUILD_USER_APPS=OFF`.
+
 Tagged releases (`v*`) build Windows, Linux, and macOS packages through GitHub Actions and upload runtime and SDK packages as release assets. Runtime packages automatically collect every executable generated from `examples/*.cpp`.
 
 ## Use In Your Project
@@ -162,6 +164,7 @@ components/   Reusable UI components built on top of the DSL
 core/         DSL, Runtime, primitives, text, image, network, and platform code
 docs/         Implementation notes and API documentation
 examples/     Standalone gallery and example application sources
+apps/         User application sources; flat .cpp files or app folders
 include/      Public include path: eui_neo.h and eui/* facade headers
 tests/        Probe sources, fixture apps, and local benchmark notes
 3rd/          Vendored third-party build sources and single-file dependencies
