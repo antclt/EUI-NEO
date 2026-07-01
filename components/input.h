@@ -125,6 +125,9 @@ public:
         const float compositionX = hasComposition
             ? std::clamp(layout.clampedCursorX(), compositionTextLeft, std::max(compositionTextLeft, compositionTextRight - compositionWidth))
             : layout.clampedCursorX();
+        const float caretX = hasComposition
+            ? std::clamp(compositionX + compositionWidth, inset_, std::max(inset_, width_ - inset_))
+            : layout.clampedCursorX();
 
         ui_.stack(id_)
             .size(width_, height_)
@@ -139,7 +142,7 @@ public:
                     .shadow(focused ? style_.shadow : core::Shadow{})
                     .transition(transition_)
                     .focusable()
-                    .imeRect(layout.clampedCursorX(), layout.cursorY, 1.5f, textLineHeight)
+                    .imeRect(caretX, layout.cursorY, 1.5f, textLineHeight)
                     .onPress([&state, width, inset, layout](const core::PointerEvent& event, const core::Rect& bounds) {
                         state.lastBounds = bounds;
                         state.cursor = InputModel::clampUtf8Boundary(state.text, layout.cursorFromPointer(event.x, event.y, bounds, width, inset));
@@ -364,7 +367,7 @@ public:
 
                 if (focused) {
                     ui_.rect(id_ + ".cursor")
-                        .position(layout.clampedCursorX(), layout.cursorY)
+                        .position(caretX, layout.cursorY)
                         .size(1.5f, fontSize_ * 1.18f)
                         .color(style_.cursor)
                         .radius(1.0f)

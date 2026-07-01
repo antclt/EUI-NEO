@@ -363,10 +363,10 @@ inline void Runtime::updateInteraction(
         logicalEvent.deltaX /= dpiScale;
         logicalEvent.deltaY /= dpiScale;
         const Rect logicalBounds{
-            bounds.x / dpiScale,
-            bounds.y / dpiScale,
-            bounds.width / dpiScale,
-            bounds.height / dpiScale
+            interactionBounds.x / dpiScale,
+            interactionBounds.y / dpiScale,
+            interactionBounds.width / dpiScale,
+            interactionBounds.height / dpiScale
         };
         if (element.onMove(logicalEvent, logicalBounds)) {
             composeRequested_ = true;
@@ -381,10 +381,10 @@ inline void Runtime::updateInteraction(
         logicalEvent.deltaX /= dpiScale;
         logicalEvent.deltaY /= dpiScale;
         const Rect logicalBounds{
-            bounds.x / dpiScale,
-            bounds.y / dpiScale,
-            bounds.width / dpiScale,
-            bounds.height / dpiScale
+            interactionBounds.x / dpiScale,
+            interactionBounds.y / dpiScale,
+            interactionBounds.width / dpiScale,
+            interactionBounds.height / dpiScale
         };
         element.onContextMenu(logicalEvent, logicalBounds);
         composeRequested_ = true;
@@ -403,7 +403,7 @@ inline void Runtime::updateInteraction(
     }
 
     if (enabled && instance.state.pressStarted && element.onPress) {
-        element.onPress(event, bounds);
+        element.onPress(event, interactionBounds);
         composeRequested_ = true;
         paintRequested_ = true;
     }
@@ -415,7 +415,7 @@ inline void Runtime::updateInteraction(
     }
 
     if (enabled && instance.state.released && element.onRelease) {
-        element.onRelease(event, bounds);
+        element.onRelease(event, interactionBounds);
         composeRequested_ = true;
         paintRequested_ = true;
     }
