@@ -79,6 +79,14 @@ VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR>& modes) {
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
+bool platformSupportsIncrementalPresent() {
+#if defined(__APPLE__)
+    return false;
+#else
+    return true;
+#endif
+}
+
 } // namespace
 
 void VulkanRenderBackend::writeColor(float (&target)[4], const core::Color& color) {
@@ -560,7 +568,8 @@ bool VulkanRenderBackend::createDevice() {
 
     const std::vector<VkExtensionProperties> availableExtensions = deviceExtensions(physicalDevice_);
     std::vector<const char*> extensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    const bool enableIncrementalPresent = hasExtension(availableExtensions, VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME);
+    const bool enableIncrementalPresent = platformSupportsIncrementalPresent() &&
+                                          hasExtension(availableExtensions, VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME);
     if (enableIncrementalPresent) {
         extensions.push_back(VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME);
     }
