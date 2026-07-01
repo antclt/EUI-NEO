@@ -42,7 +42,7 @@ constexpr const char* kDefaultUiFontFile = "JingNanJunJunTi-JinNanJunJunTi-Bold-
 constexpr const char* kDefaultIconFontFile = "Font Awesome 7 Free-Solid-900.otf";
 constexpr int kGrayAtlasSize = 2048;
 constexpr int kColorAtlasSize = 1024;
-constexpr FT_Int32 kGlyphLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_COLOR | FT_LOAD_NO_SVG | FT_LOAD_NO_HINTING | FT_LOAD_NO_AUTOHINT;
+constexpr FT_Int32 kGlyphLoadFlags = FT_LOAD_DEFAULT | FT_LOAD_COLOR | FT_LOAD_NO_SVG | FT_LOAD_TARGET_LIGHT;
 
 struct FontFace {
     std::string path;
