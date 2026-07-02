@@ -56,11 +56,25 @@ endif()
 
 function(eui_apply_compile_options target_name)
     if(MSVC)
-        target_compile_options(${target_name} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/O1> /GS- /sdl- /utf-8 /wd4819)
+        target_compile_options(${target_name} PRIVATE
+            /utf-8
+            $<$<NOT:$<CONFIG:Debug>>:/O1>
+            $<$<NOT:$<CONFIG:Debug>>:/GS->
+            $<$<NOT:$<CONFIG:Debug>>:/sdl->
+            $<$<NOT:$<CONFIG:Debug>>:/wd4819>
+        )
     elseif(APPLE)
-        target_compile_options(${target_name} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Os -fno-exceptions -fno-rtti>)
+        target_compile_options(${target_name} PRIVATE
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CONFIG:Debug>>>:-Os>
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CONFIG:Debug>>>:-fno-exceptions>
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CONFIG:Debug>>>:-fno-rtti>
+        )
     else()
-        target_compile_options(${target_name} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Os -fno-exceptions -fno-rtti>)
+        target_compile_options(${target_name} PRIVATE
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CONFIG:Debug>>>:-Os>
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CONFIG:Debug>>>:-fno-exceptions>
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CONFIG:Debug>>>:-fno-rtti>
+        )
     endif()
 endfunction()
 
@@ -75,9 +89,12 @@ function(eui_apply_app_link_options target_name)
             /SUBSYSTEM:WINDOWS
         )
     elseif(APPLE)
-        target_link_options(${target_name} PRIVATE -Wl,-dead_strip)
+        target_link_options(${target_name} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-Wl,-dead_strip>)
     else()
-        target_link_options(${target_name} PRIVATE -Wl,--gc-sections -s)
+        target_link_options(${target_name} PRIVATE
+            $<$<NOT:$<CONFIG:Debug>>:-Wl,--gc-sections>
+            $<$<NOT:$<CONFIG:Debug>>:-s>
+        )
     endif()
 endfunction()
 

@@ -63,9 +63,9 @@ function(eui_silence_third_party_warnings target_name)
     endif()
 
     if(MSVC)
-        target_compile_options(${target_name} PRIVATE /w)
+        target_compile_options(${target_name} PRIVATE $<$<NOT:$<CONFIG:Debug>>:/w>)
     else()
-        target_compile_options(${target_name} PRIVATE -w)
+        target_compile_options(${target_name} PRIVATE $<$<NOT:$<CONFIG:Debug>>:-w>)
     endif()
 endfunction()
 
