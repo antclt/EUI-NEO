@@ -7,6 +7,18 @@
 #include <limits>
 #include <utility>
 
+namespace {
+
+bool platformRequiresConservativeCacheSync() {
+#if defined(__APPLE__)
+    return true;
+#else
+    return false;
+#endif
+}
+
+} // namespace
+
 namespace core::render::vulkan {
 
 bool VulkanRenderBackend::ensureRenderCache(int width, int height) {
@@ -116,7 +128,9 @@ void VulkanRenderBackend::beginRenderCacheFrame(int width,
     }
     endActiveRenderPass();
     cacheRenderArea_ = fullRenderRect(width, height);
-    std::vector<core::Rect> renderRects = mergeRenderRects(clampRenderRects(repaintRects, width, height));
+    std::vector<core::Rect> renderRects = platformRequiresConservativeCacheSync()
+        ? std::vector<core::Rect>{}
+        : mergeRenderRects(clampRenderRects(repaintRects, width, height));
     if (!renderRects.empty()) {
         core::Rect area = renderRects.front();
         for (std::size_t i = 1; i < renderRects.size(); ++i) {
@@ -240,6 +254,10 @@ std::vector<core::Rect> VulkanRenderBackend::resolveRenderCacheBlitRects(int wid
     } else if (renderCacheGeneration_ == 0) {
         renderCacheGeneration_ = 1;
         recordRenderCacheBlitHistory(renderCacheGeneration_, true, {fullRect});
+    }
+
+    if (platformRequiresConservativeCacheSync()) {
+        return useFull();
     }
 
     if (mode == RenderCacheBlitMode::Full || currentImage_ >= swapchainImageCacheGenerations_.size()) {

@@ -201,22 +201,41 @@ void record(bool tx, bool hex, int byteCount) {
 }
 
 std::string mockTextPayload() {
-    static constexpr std::array<const char*, 5> kSamples{{
-        "ACK ready",
+    static constexpr std::array<const char*, 6> kSamples{{
+        "ACK",
         "RX temperature=24.8C",
-        "RX packet OK",
-        "Flow stable",
-        "Device heartbeat"
+        "RX packet OK pressure=101.7kPa",
+        "Flow stable device heartbeat online",
+        "Sensor burst accel=0.12,-0.04,0.98 gyro=1.6,0.2,-0.3",
+        "Frame sync payload block ready checksum verified route=A7 channel=03"
     }};
-    return kSamples[static_cast<std::size_t>(state.sequence) % kSamples.size()];
+    static constexpr std::array<const char*, 5> kExtras{{
+        " rssi=-42",
+        " seq window updated",
+        " cache miss refill",
+        " sample batch committed",
+        " diagnostic trace extended"
+    }};
+
+    std::string payload = kSamples[static_cast<std::size_t>(state.sequence) % kSamples.size()];
+    const int extraCount = (state.sequence * 5 + 1) % 4;
+    for (int i = 0; i < extraCount; ++i) {
+        payload += kExtras[static_cast<std::size_t>((state.sequence + i) % static_cast<int>(kExtras.size()))];
+    }
+    return payload;
 }
 
 std::string mockHexPayload(int hint) {
     const int a = 0xA0 | (state.sequence & 0x0F);
-    const int b = hint & 0xFF;
-    const int c = (state.sequence * 23 + 0x31) & 0xFF;
-    const int sum = (0xAA + 0x55 + a + b + c) & 0xFF;
-    return "AA 55 " + byteHex(a) + " " + byteHex(b) + " " + byteHex(c) + " " + byteHex(sum);
+    const int payloadBytes = 4 + ((state.sequence * 5 + hint) % 28);
+    int sum = 0xAA + 0x55 + a + payloadBytes;
+    std::string payload = "AA 55 " + byteHex(a) + " " + byteHex(payloadBytes);
+    for (int i = 0; i < payloadBytes; ++i) {
+        const int value = (state.sequence * 37 + hint * 11 + i * 29 + 0x31) & 0xFF;
+        sum += value;
+        payload += " " + byteHex(value);
+    }
+    return payload + " " + byteHex(sum & 0xFF);
 }
 
 void receive(bool hex, int hint = 6) {
