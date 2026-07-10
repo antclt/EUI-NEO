@@ -20,16 +20,19 @@ const DslAppConfig& dslAppConfig() {
 
 namespace {
 
-int selectedIndex = 0;
-bool autoPlay = true;
-int imageRefreshGeneration = 0;
-float animationSpeed = 0.55f;
-int preparedGeneration = -1;
-
 struct PoemText {
     std::string title = "诗词";
     std::string author = "佚名";
     std::string content = "正在加载今日诗词";
+};
+
+struct PageState {
+    int selectedIndex = 0;
+    bool autoPlay = true;
+    int imageRefreshGeneration = 0;
+    float animationSpeed = 0.55f;
+    int preparedGeneration = -1;
+    std::vector<components::workshop::CardSliderItem> items;
 };
 
 constexpr std::array<eui::Color, 4> kFallbackImageThemes{{
@@ -175,28 +178,26 @@ std::vector<components::workshop::CardSliderItem> sliderItems(const std::vector<
     };
 }
 
-const std::vector<components::workshop::CardSliderItem>& currentItems() {
-    static std::vector<components::workshop::CardSliderItem> items;
-    if (preparedGeneration != imageRefreshGeneration || items.empty()) {
-        preparedGeneration = imageRefreshGeneration;
-        items = sliderItems(imageSources(preparedGeneration), poemTexts(preparedGeneration));
+const std::vector<components::workshop::CardSliderItem>& currentItems(PageState& state) {
+    if (state.preparedGeneration != state.imageRefreshGeneration || state.items.empty()) {
+        state.preparedGeneration = state.imageRefreshGeneration;
+        state.items = sliderItems(imageSources(state.preparedGeneration), poemTexts(state.preparedGeneration));
     } else {
-        const std::vector<PoemText> poems = poemTexts(preparedGeneration);
-        for (std::size_t index = 0; index < items.size() && index < poems.size(); ++index) {
-            items[index].title = poems[index].title;
-            items[index].subtitle = poems[index].author;
-            items[index].description = poems[index].content;
+        const std::vector<PoemText> poems = poemTexts(state.preparedGeneration);
+        for (std::size_t index = 0; index < state.items.size() && index < poems.size(); ++index) {
+            state.items[index].title = poems[index].title;
+            state.items[index].subtitle = poems[index].author;
+            state.items[index].description = poems[index].content;
         }
-        const std::vector<std::string> sources = imageSources(preparedGeneration);
-        for (std::size_t index = 0; index < items.size() && index < sources.size(); ++index) {
+        const std::vector<std::string> sources = imageSources(state.preparedGeneration);
+        for (std::size_t index = 0; index < state.items.size() && index < sources.size(); ++index) {
             if (!sources[index].empty()) {
-                items[index].source = sources[index];
+                state.items[index].source = sources[index];
             }
         }
     }
-    return items;
+    return state.items;
 }
-
 eui::Color imageThemeFallback(int index) {
     const eui::Color fallback = kFallbackImageThemes[static_cast<std::size_t>(
         std::clamp(index, 0, static_cast<int>(kFallbackImageThemes.size()) - 1))];
@@ -244,13 +245,14 @@ eui::Transition motion() {
     return transition;
 }
 
-float slideDuration() {
+float slideDuration(float animationSpeed) {
     return 1.18f - std::clamp(animationSpeed, 0.0f, 1.0f) * 0.86f;
 }
 
 } // namespace
 
 void compose(eui::Ui& ui, const eui::Screen& screen) {
+    PageState* state = &ui.state<PageState>("page");
     const auto transition = motion();
     const float safeW = std::max(320.0f, screen.width);
     const float safeH = std::max(420.0f, screen.height);
@@ -264,9 +266,9 @@ void compose(eui::Ui& ui, const eui::Screen& screen) {
     const float sliderW = std::max(
         70.0f,
         controlsW - 20.0f - prevNextW * 2.0f - autoW - refreshW - gap * 5.0f - 48.0f);
-    const std::vector<components::workshop::CardSliderItem>& items = currentItems();
+    const std::vector<components::workshop::CardSliderItem>& items = currentItems(*state);
     const int count = static_cast<int>(items.size());
-    const int activeIndex = count > 0 ? std::clamp(selectedIndex, 0, count - 1) : 0;
+    const int activeIndex = count > 0 ? std::clamp(state->selectedIndex, 0, count - 1) : 0;
     preloadImages(items);
     const eui::Color imageAccent = count > 0
         ? eui::image::themeColor(items[static_cast<std::size_t>(activeIndex)].source, imageThemeFallback(activeIndex))
@@ -280,16 +282,16 @@ void compose(eui::Ui& ui, const eui::Screen& screen) {
             components::workshop::cardSlider(ui, "poem.card.slider")
                 .size(screen.width, screen.height)
                 .items(items)
-                .currentIndex(selectedIndex)
-                .autoPlay(autoPlay)
+                .currentIndex(state->selectedIndex)
+                .autoPlay(state->autoPlay)
                 .interval(3.2f)
-                .duration(slideDuration())
+                .duration(slideDuration(state->animationSpeed))
                 .cardSpacing(safeW < 760.0f ? 10.0f : 26.0f)
                 .background(true)
                 .tilt(true)
                 .theme(theme)
-                .onChange([count](int index) {
-                    selectedIndex = count > 0 ? std::clamp(index, 0, count - 1) : 0;
+                .onChange([state, count](int index) {
+                    state->selectedIndex = count > 0 ? std::clamp(index, 0, count - 1) : 0;
                 })
                 .build();
 
@@ -316,21 +318,21 @@ void compose(eui::Ui& ui, const eui::Screen& screen) {
                         .fontSize(13.0f)
                         .style(themedButtonStyle(theme, imageAccent, false))
                         .transition(transition)
-                        .onClick([count] {
+                        .onClick([state, count] {
                             if (count > 0) {
-                                selectedIndex = (selectedIndex + count - 1) % count;
+                                state->selectedIndex = (state->selectedIndex + count - 1) % count;
                             }
                         })
                         .build();
 
                     components::button(ui, "controls.auto")
                         .size(autoW, 36.0f)
-                        .text(autoPlay ? "Auto On" : "Auto Off")
+                        .text(state->autoPlay ? "Auto On" : "Auto Off")
                         .fontSize(13.0f)
-                        .style(themedButtonStyle(theme, imageAccent, autoPlay))
+                        .style(themedButtonStyle(theme, imageAccent, state->autoPlay))
                         .transition(transition)
-                        .onClick([] {
-                            autoPlay = !autoPlay;
+                        .onClick([state] {
+                            state->autoPlay = !state->autoPlay;
                         })
                         .build();
 
@@ -340,8 +342,8 @@ void compose(eui::Ui& ui, const eui::Screen& screen) {
                         .fontSize(13.0f)
                         .style(themedButtonStyle(theme, imageAccent, false))
                         .transition(transition)
-                        .onClick([] {
-                            ++imageRefreshGeneration;
+                        .onClick([state] {
+                            ++state->imageRefreshGeneration;
                         })
                         .build();
 
@@ -351,9 +353,9 @@ void compose(eui::Ui& ui, const eui::Screen& screen) {
                         .fontSize(13.0f)
                         .style(themedButtonStyle(theme, imageAccent, false))
                         .transition(transition)
-                        .onClick([count] {
+                        .onClick([state, count] {
                             if (count > 0) {
-                                selectedIndex = (selectedIndex + 1) % count;
+                                state->selectedIndex = (state->selectedIndex + 1) % count;
                             }
                         })
                         .build();
@@ -369,11 +371,11 @@ void compose(eui::Ui& ui, const eui::Screen& screen) {
 
                     components::slider(ui, "controls.speed")
                         .size(sliderW, 34.0f)
-                        .value(animationSpeed)
+                        .value(state->animationSpeed)
                         .theme(theme)
                         .transition(transition)
-                        .onChange([](float value) {
-                            animationSpeed = std::clamp(value, 0.0f, 1.0f);
+                        .onChange([state](float value) {
+                            state->animationSpeed = std::clamp(value, 0.0f, 1.0f);
                         })
                         .build();
                 })

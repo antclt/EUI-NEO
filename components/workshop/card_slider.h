@@ -93,6 +93,8 @@ public:
         const core::Transition motion = core::Transition::make(0.10f, core::Ease::OutCubic)
             .animate(core::AnimProperty::Opacity | core::AnimProperty::Transform | core::AnimProperty::Frame);
         const std::function<void(int)> onChange = onChange_;
+        CardSliderState* runtimeState = &state;
+        const float cardSpacing = cardSpacing_;
 
         ui_.stack(id_)
             .size(safeWidth, safeHeight)
@@ -108,8 +110,8 @@ public:
                 if (needsFrameTick(state)) {
                     ui_.stack(id_ + ".ticker")
                         .size(1.0f, 1.0f)
-                        .onFrame([&state](float deltaSeconds) {
-                            tick(state, deltaSeconds);
+                        .onFrame([runtimeState](float deltaSeconds) {
+                            tick(*runtimeState, deltaSeconds);
                         })
                         .build();
                 }
@@ -117,22 +119,22 @@ public:
                 if (state.autoPlay) {
                     ui_.stack(id_ + ".autoplay")
                         .size(1.0f, 1.0f)
-                        .onTimer(state.interval, [&state, count, onChange] {
-                            if (!state.animating && count > 1) {
-                                startSlide(state, wrapIndex(state.current + 1, count), 1, count);
-                                emitChange(state, onChange);
+                        .onTimer(state.interval, [runtimeState, count, onChange] {
+                            if (!runtimeState->animating && count > 1) {
+                                startSlide(*runtimeState, wrapIndex(runtimeState->current + 1, count), 1, count);
+                                emitChange(*runtimeState, onChange);
                             }
                         })
                         .build();
                 }
 
-                const auto scroll = [&state, count, onChange](const MouseScrollEvent& event) {
-                    if (count <= 1 || state.animating || event.stepY == 0.0f) {
+                const auto scroll = [runtimeState, count, onChange](const MouseScrollEvent& event) {
+                    if (count <= 1 || runtimeState->animating || event.stepY == 0.0f) {
                         return;
                     }
                     const int direction = event.stepY < 0.0f ? 1 : -1;
-                    startSlide(state, wrapIndex(state.current + direction, count), direction, count);
-                    emitChange(state, onChange);
+                    startSlide(*runtimeState, wrapIndex(runtimeState->current + direction, count), direction, count);
+                    emitChange(*runtimeState, onChange);
                 };
 
                 mouseArea(ui_, id_ + ".input")
@@ -140,11 +142,11 @@ public:
                     .zIndex(900)
                     .scrollStep(1.0f)
                     .maxScrollStep(1.0f)
-                    .onMove([this, &state, safeWidth, safeHeight](const MouseEvent& event) {
-                        updateHoverTarget(state, event.x, safeWidth, safeHeight);
+                    .onMove([runtimeState, safeWidth, safeHeight, cardSpacing](const MouseEvent& event) {
+                        updateHoverTarget(*runtimeState, event.x, safeWidth, safeHeight, cardSpacing);
                     })
-                    .onLeave([&state] {
-                        state.targetHoverAngle = 0.0f;
+                    .onLeave([runtimeState] {
+                        runtimeState->targetHoverAngle = 0.0f;
                     })
                     .onScroll(scroll)
                     .build();
@@ -297,12 +299,16 @@ private:
         return state.animating || std::fabs(state.hoverAngle - state.targetHoverAngle) >= 0.0009f;
     }
 
-    void updateHoverTarget(CardSliderState& state, float pointerX, float width, float height) const {
+    static void updateHoverTarget(CardSliderState& state,
+                                  float pointerX,
+                                  float width,
+                                  float height,
+                                  float cardSpacing) {
         if (!state.tiltEnabled) {
             state.targetHoverAngle = 0.0f;
             return;
         }
-        const CardRect rect = cardRect(0.0f, width, height);
+        const CardRect rect = cardRect(0.0f, width, height, cardSpacing);
         const float centerX = rect.x + rect.width * 0.5f;
         const float amount = std::clamp((pointerX - centerX) / std::max(1.0f, rect.width) * 2.0f, -1.0f, 1.0f);
         state.targetHoverAngle = amount * 12.0f * kPi / 180.0f;
@@ -355,7 +361,7 @@ private:
         return cards;
     }
 
-    CardRect cardRect(float slot, float width, float height) const {
+    static CardRect cardRect(float slot, float width, float height, float cardSpacing) {
         const float scale = std::min({
             width / (kBaseItemWidth * 3.0f),
             std::max(1.0f, height - 56.0f) / (kBaseItemHeight * 1.25f),
@@ -366,11 +372,15 @@ private:
         const float cx = std::round(width * 0.5f);
         const float cy = std::round(height * 0.5f - 10.0f);
         return {
-            std::round(cx - cardW * 0.5f + slot * (cardW * 1.10f + cardSpacing_)),
+            std::round(cx - cardW * 0.5f + slot * (cardW * 1.10f + cardSpacing)),
             std::round(cy - cardH * 0.5f),
             cardW,
             cardH
         };
+    }
+
+    CardRect cardRect(float slot, float width, float height) const {
+        return cardRect(slot, width, height, cardSpacing_);
     }
 
     static CardVisual cardVisual(float slot, float hoverAngle) {

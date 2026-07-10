@@ -48,7 +48,12 @@ namespace {
 
 std::unordered_map<std::string, std::weak_ptr<const StaticImageData>> gStaticImageCache;
 std::unordered_map<std::string, std::weak_ptr<const GifFrameData>> gGifCache;
-std::unordered_map<std::string, core::Color> gThemeColorCache;
+struct ThemeColorCacheEntry {
+    std::string imageVersionKey;
+    core::Color color;
+};
+
+std::unordered_map<std::string, ThemeColorCacheEntry> gThemeColorCache;
 std::unordered_map<std::string, std::string> gDownloadedPathCache;
 std::unordered_map<std::string, bool> gDownloadInFlight;
 std::unordered_map<std::string, bool> gDownloadFailed;
@@ -544,10 +549,29 @@ core::Color readableThemeColor(core::Color color) {
     return color;
 }
 
+std::string baseImageCacheKey(const std::string& resolvedPath, bool flipVertically) {
+    return resolvedPath + (flipVertically ? "#flip" : "#noflip");
+}
+
+std::string imageFileVersionSuffix(const std::string& resolvedPath) {
+    std::error_code error;
+    const std::filesystem::file_time_type modified = std::filesystem::last_write_time(resolvedPath, error);
+    if (error) {
+        return {};
+    }
+
+    const auto size = std::filesystem::file_size(resolvedPath, error);
+    if (error) {
+        return {};
+    }
+
+    return "#size=" + std::to_string(size) +
+           "#mtime=" + std::to_string(modified.time_since_epoch().count());
+}
 } // namespace
 
 std::string imageCacheKey(const std::string& resolvedPath, bool flipVertically) {
-    return resolvedPath + (flipVertically ? "#flip" : "#noflip");
+    return baseImageCacheKey(resolvedPath, flipVertically) + imageFileVersionSuffix(resolvedPath);
 }
 
 std::string resolveImagePath(const std::string& source, bool* pending) {
@@ -628,11 +652,11 @@ std::shared_ptr<const StaticImageData> loadStaticImageFromPath(const std::string
     return image;
 }
 
-core::Color sampleThemeColor(const StaticImageData& image, core::Color fallback) {
+static bool trySampleThemeColor(const StaticImageData& image, core::Color& color) {
     const std::size_t expectedBytes =
         static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height) * 4u;
     if (image.width <= 0 || image.height <= 0 || image.pixels.size() < expectedBytes) {
-        return fallback;
+        return false;
     }
 
     const int pixelCount = image.width * image.height;
@@ -674,12 +698,19 @@ core::Color sampleThemeColor(const StaticImageData& image, core::Color fallback)
     }
 
     if (totalWeight > 0.001f) {
-        return readableThemeColor({weightedR / totalWeight, weightedG / totalWeight, weightedB / totalWeight, 1.0f});
+        color = readableThemeColor({weightedR / totalWeight, weightedG / totalWeight, weightedB / totalWeight, 1.0f});
+        return true;
     }
     if (averageCount > 0.0f) {
-        return readableThemeColor({averageR / averageCount, averageG / averageCount, averageB / averageCount, 1.0f});
+        color = readableThemeColor({averageR / averageCount, averageG / averageCount, averageB / averageCount, 1.0f});
+        return true;
     }
-    return fallback;
+    return false;
+}
+
+core::Color sampleThemeColor(const StaticImageData& image, core::Color fallback) {
+    core::Color color;
+    return trySampleThemeColor(image, color) ? color : fallback;
 }
 
 core::Color sampleThemeColor(const std::string& source,
@@ -691,10 +722,11 @@ core::Color sampleThemeColor(const std::string& source,
         return fallback;
     }
 
-    const std::string cacheKey = imageCacheKey(resolvedPath, flipVertically);
-    const auto cached = gThemeColorCache.find(cacheKey);
-    if (cached != gThemeColorCache.end()) {
-        return cached->second;
+    const std::string baseCacheKey = baseImageCacheKey(resolvedPath, flipVertically);
+    const std::string imageVersionKey = imageCacheKey(resolvedPath, flipVertically);
+    const auto cached = gThemeColorCache.find(baseCacheKey);
+    if (cached != gThemeColorCache.end() && cached->second.imageVersionKey == imageVersionKey) {
+        return cached->second.color;
     }
 
     const auto image = loadStaticImageFromPath(resolvedPath, flipVertically);
@@ -702,8 +734,12 @@ core::Color sampleThemeColor(const std::string& source,
         return fallback;
     }
 
-    const core::Color color = sampleThemeColor(*image, fallback);
-    gThemeColorCache[cacheKey] = color;
+    core::Color color;
+    if (!trySampleThemeColor(*image, color)) {
+        return fallback;
+    }
+
+    gThemeColorCache[baseCacheKey] = {imageVersionKey, color};
     return color;
 }
 
